@@ -1,0 +1,110 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// FirestoreRules.txt
+//
+// Deploy these rules via the Firebase console or Firebase CLI:
+//   firebase deploy --only firestore:rules
+//
+// Design principles:
+//   - Users can only read/write their own data.
+//   - Friend list entries can be written by the other party (accept scenario)
+//     but only deleted by the owning user.
+//   - Incoming requests can only be written by the sender, deleted by the
+//     recipient (accept/reject) or the sender (cancel).
+//   - Outgoing requests are only visible to the owner.
+//   - Username lookup (read from `users`) is open to authenticated users
+//     so the "send by username" query works.
+// ─────────────────────────────────────────────────────────────────────────────
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ────────────────────────────────────────────────────
+
+    // True when the caller is authenticated.
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // True when the caller's UID matches the given uid.
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Validates that a write to a user-profile document only sets the allowed fields.
+    function validUserProfileWrite() {
+      return request.resource.data.keys().hasOnly(['username', 'photonUserId'])
+          && request.resource.data.username  is string
+          && request.resource.data.photonUserId is string;
+    }
+
+    // Validates that a write to a friend-entry document only sets the allowed fields.
+    function validFriendEntryWrite() {
+      return request.resource.data.keys().hasOnly(['username', 'photonUserId', 'addedAt'])
+          && request.resource.data.username  is string
+          && request.resource.data.photonUserId is string
+          && request.resource.data.addedAt   is timestamp;
+    }
+
+    // Validates that a write to a friend-request document only sets the allowed fields.
+    function validRequestWrite() {
+      return request.resource.data.keys().hasOnly(['username', 'photonUserId', 'sentAt'])
+          && request.resource.data.username  is string
+          && request.resource.data.photonUserId is string
+          && request.resource.data.sentAt    is timestamp;
+    }
+
+    // ── users/{uid} ─────────────────────────────────────────────────────────
+    // Any signed-in user can read (needed for username → uid lookup).
+    // Only the owner can write their own profile.
+    match /users/{uid} {
+      allow read:   if isSignedIn();
+      allow create: if isOwner(uid) && validUserProfileWrite();
+      allow update: if isOwner(uid) && validUserProfileWrite();
+      allow delete: if false; // profiles are never deleted client-side
+    }
+
+    // ── friends/{uid}/list/{friendUid} ──────────────────────────────────────
+    // Owner can read the full list.
+    // Either party can create the entry (write happens during AcceptRequest batch).
+    // Only the owner can delete entries (RemoveFriend).
+    match /friends/{uid}/list/{friendUid} {
+      allow read:   if isOwner(uid);
+
+      // Allow write when:
+      //   (a) the owner is doing it (self-accept edge case), OR
+      //   (b) the friend is adding the entry (accept writes both sides).
+      allow create: if isSignedIn()
+                    && (request.auth.uid == uid || request.auth.uid == friendUid)
+                    && validFriendEntryWrite();
+
+      allow update: if false; // friend entries are immutable once created
+      allow delete: if isOwner(uid);
+    }
+
+    // ── friendRequests/{uid}/incoming/{fromUid} ─────────────────────────────
+    // Owner can read/delete (accept or reject).
+    // The sender can create (= send request) or delete (= cancel).
+    match /friendRequests/{uid}/incoming/{fromUid} {
+      allow read:   if isOwner(uid);
+
+      // The sender (fromUid) can write the incoming request to the recipient.
+      allow create: if isSignedIn()
+                    && request.auth.uid == fromUid
+                    && validRequestWrite();
+
+      allow update: if false; // requests are immutable
+      allow delete: if isOwner(uid) || request.auth.uid == fromUid;
+    }
+
+    // ── friendRequests/{uid}/outgoing/{toUid} ───────────────────────────────
+    // Only the owner can read, create, or delete their own outgoing requests.
+    match /friendRequests/{uid}/outgoing/{toUid} {
+      allow read:   if isOwner(uid);
+      allow create: if isOwner(uid) && validRequestWrite();
+      allow update: if false;
+      allow delete: if isOwner(uid) || request.auth.uid == toUid;
+    }
+
+  }
+}
