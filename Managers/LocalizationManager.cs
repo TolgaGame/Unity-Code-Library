@@ -4,27 +4,22 @@ using UnityEngine.Localization.Settings;
 
 public class LocalizationManager : MonoBehaviour
 {
-
-    // Singleton instance
     public static LocalizationManager Instance { get; private set; }
 
-    // Single (legacy) Localized String Table Reference (kept for backward compatibility)
+    // Kept for backward compatibility with the single-table lookup
     public LocalizedStringTable localizedStringTable;
 
     private const string LanguagePrefKey = "SelectedLanguage";
 
-    //////////////////////////////////////////
-
     private void Awake()
     {
-        // Singleton pattern implementation
-        if (Instance == null) {
+        if (Instance == null)
+        {
             Instance = this;
             DontDestroyOnLoad(gameObject);
         }
         else
             Destroy(gameObject);
-     
     }
 
     private void Start()
@@ -32,7 +27,7 @@ public class LocalizationManager : MonoBehaviour
         LoadLanguage();
     }
 
-    // GET LOCALIZE STRING (legacy - uses single assigned table)
+    // Legacy lookup that uses the single assigned table
     public string GetLocalizedString(string key)
     {
         if (localizedStringTable == null)
@@ -44,17 +39,16 @@ public class LocalizationManager : MonoBehaviour
             TableEntryReference = key
         };
 
-    string localizedText = localizedString.GetLocalizedString();
-    return string.IsNullOrEmpty(localizedText) ? $"Not found [{key}] (legacy table)" : localizedText;
+        string localizedText = localizedString.GetLocalizedString();
+        return string.IsNullOrEmpty(localizedText) ? $"Not found [{key}] (legacy table)" : localizedText;
     }
 
-    // GET LOCALIZE STRING BY TABLE NAME
     public string GetLocalizedString(string tableName, string key)
     {
         if (string.IsNullOrWhiteSpace(tableName)) return "Table name empty";
         if (string.IsNullOrWhiteSpace(key)) return "Key empty";
 
-        // Use the StringDatabase directly (avoids needing a LocalizedString wrapper)
+        // Query the StringDatabase directly to avoid creating a LocalizedString wrapper
         try
         {
             string result = LocalizationSettings.StringDatabase.GetLocalizedString(tableName, key, null, FallbackBehavior.UseProjectSettings);
@@ -68,7 +62,7 @@ public class LocalizationManager : MonoBehaviour
         }
     }
 
-    // OPTIONS MENU CHANGE LANG.
+    // Index order must match the options in the language dropdown
     public void ChangeLanguage(int languageIndex)
     {
         Locale newLocale = null;
@@ -115,28 +109,24 @@ public class LocalizationManager : MonoBehaviour
                 newLocale = LocalizationSettings.AvailableLocales.Locales.Find(locale => locale.Identifier.Code == "zh-CN");
                 break;
 
-                
             default:
-                Debug.LogError("Invalid language index!");
+                Debug.LogError("[LocalizationManager] Invalid language index!");
                 return;
         }
 
-        //// LOCALIZE CHANGE
         if (newLocale != null)
         {
             LocalizationSettings.SelectedLocale = newLocale;
             PlayerPrefs.SetInt(LanguagePrefKey, languageIndex);
             PlayerPrefs.Save();
-            Debug.Log($"Language changed to: {newLocale.Identifier.Code}");
+            Debug.Log($"[LocalizationManager] Language changed to: {newLocale.Identifier.Code}");
         }
         else
         {
-            Debug.LogError("Locale not found!");
+            Debug.LogError("[LocalizationManager] Locale not found!");
         }
-
     }
 
-    // START CHECK LANG.
     private void LoadLanguage()
     {
         int languageIndex;
@@ -146,11 +136,10 @@ public class LocalizationManager : MonoBehaviour
         }
         else
         {
-            languageIndex = 0; // Default to first language (Turkish)
+            languageIndex = 0; // Index 0 is Turkish
             PlayerPrefs.SetInt(LanguagePrefKey, languageIndex);
         }
 
         ChangeLanguage(languageIndex);
     }
-
 }

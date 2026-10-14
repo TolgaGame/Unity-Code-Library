@@ -1,20 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// AuthManager.cs
-// Responsibilities:
-//   1. Listen to bl_LoginPro.OnLogin (MFPS login system).
-//   2. On MFPS login: sign in to Firebase Anonymously to get a stable UID.
-//   3. Write/load users/{uid} in Firestore using the MFPS NickName.
-//   4. Set PhotonNetwork.NickName = NickName.
-//   5. Expose events so FriendManager / FriendRequestManager can react.
-//
-// Why Anonymous Auth?
-//   MFPS uses its own PHP/MySQL backend — not Firebase Auth.
-//   Anonymous Auth gives us a stable Firebase UID per device install,
-//   which satisfies Firestore security rules (request.auth != null).
-//
-// Attach to a persistent GameObject. FirebaseManager calls Initialize().
-// ─────────────────────────────────────────────────────────────────────────────
-
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -28,10 +11,12 @@ using UnityEngine;
 using WolfTeen.Friends;
 using UserProfile = WolfTeen.Friends.UserProfile;
 
+/// <summary>
+/// Bridges the MFPS login to Firebase. MFPS uses its own PHP/MySQL backend, so an anonymous
+/// Firebase sign-in provides the auth state that the Firestore rules require (request.auth != null).
+/// </summary>
 public class AuthManager : PersistentSingleton<AuthManager>, IConnectionCallbacks
 {
-    // ── Public state ─────────────────────────────────────────────────────────
-
     /// <summary>Currently authenticated local user. Null until sign-in succeeds.</summary>
     public UserProfile CurrentUser { get; private set; }
 
@@ -39,8 +24,6 @@ public class AuthManager : PersistentSingleton<AuthManager>, IConnectionCallback
     public bool IsPhotonConnected { get; private set; }
 
     public bool IsAuthenticated => CurrentUser != null;
-
-    // ── Events ───────────────────────────────────────────────────────────────
 
     /// <summary>Fired on the main thread once profile is ready.</summary>
     public static event Action<UserProfile> OnSignInComplete;
@@ -57,11 +40,7 @@ public class AuthManager : PersistentSingleton<AuthManager>, IConnectionCallback
     /// <summary>Fired when Photon disconnects unexpectedly.</summary>
     public static event Action<DisconnectCause> OnPhotonDisconnected;
 
-    // ── Internals ────────────────────────────────────────────────────────────
-
     private bool _profileLoadInProgress;
-
-    // ── Lifecycle ────────────────────────────────────────────────────────────
 
     protected override void Awake()
     {
@@ -75,8 +54,6 @@ public class AuthManager : PersistentSingleton<AuthManager>, IConnectionCallback
         PhotonNetwork.RemoveCallbackTarget(this);
     }
 
-    // ── Initialization ───────────────────────────────────────────────────────
-
     /// <summary>
     /// Called from FirebaseManager.InitializeFirebase() once Firebase is ready.
     /// </summary>
@@ -84,12 +61,10 @@ public class AuthManager : PersistentSingleton<AuthManager>, IConnectionCallback
     {
         SubscribeToMFPS();
 
-        // Already logged in before Firebase finished initializing?
+        // The user may have logged in before Firebase finished initializing
         if (bl_DataBase.Instance != null && bl_DataBase.Instance.isLogged)
             HandleMFPSLogin();
     }
-
-    // ── MFPS login events ─────────────────────────────────────────────────────
 
     private void SubscribeToMFPS()
     {
@@ -124,7 +99,7 @@ public class AuthManager : PersistentSingleton<AuthManager>, IConnectionCallback
 
         if (string.IsNullOrEmpty(mfpsNickName))
         {
-            // Guest / nickname not yet set — fall back to LoginName
+            // Guest or nickname not set yet: fall back to LoginName
             mfpsNickName = bl_DataBase.Instance.LocalUser.LoginName;
         }
 
@@ -158,13 +133,10 @@ public class AuthManager : PersistentSingleton<AuthManager>, IConnectionCallback
         Debug.Log("[AuthManager] User signed out.");
     }
 
-    // ── Firebase Anonymous Auth + Firestore profile ───────────────────────────
-
     private async Task<UserProfile> SignInAnonymouslyAndSaveProfileAsync(string username)
     {
         FirebaseAuth auth = FirebaseAuth.DefaultInstance;
 
-        // Reuse existing anonymous session if available.
         if (auth.CurrentUser == null)
         {
             var authResult = await auth.SignInAnonymouslyAsync();
@@ -174,15 +146,14 @@ public class AuthManager : PersistentSingleton<AuthManager>, IConnectionCallback
 
         FirebaseFirestore db = FirebaseFirestore.DefaultInstance;
 
-        // Use the stable username as the document ID instead of the anonymous UID.
-        // Anonymous Auth generates a new UID on every reinstall / cache clear, which
-        // would create duplicate documents for the same player.
+        // The username is the document ID because an anonymous UID changes on every
+        // reinstall or cache clear, which would create duplicate documents per player.
         DocumentReference  userRef = db.Collection("users").Document(username);
         DocumentSnapshot   snap    = await userRef.GetSnapshotAsync();
 
         if (snap.Exists)
         {
-            // Profile exists — refresh the anonymous auth UID in case it rotated.
+            // Refresh the anonymous UID in case it rotated
             await userRef.UpdateAsync(new Dictionary<string, object>
             {
                 { "username",     username },
@@ -192,7 +163,6 @@ public class AuthManager : PersistentSingleton<AuthManager>, IConnectionCallback
         }
         else
         {
-            // First time — create the profile.
             await userRef.SetAsync(new Dictionary<string, object>
             {
                 { "username",     username },
@@ -201,8 +171,7 @@ public class AuthManager : PersistentSingleton<AuthManager>, IConnectionCallback
             });
         }
 
-        // Expose username as Uid so the rest of the system (FriendManager,
-        // FriendRequestManager) uses a stable, per-player document key.
+        // Uid is the username so FriendManager and FriendRequestManager share a stable document key
         return new UserProfile
         {
             Uid          = username,
@@ -210,8 +179,6 @@ public class AuthManager : PersistentSingleton<AuthManager>, IConnectionCallback
             PhotonUserId = username
         };
     }
-
-    // ── Username sanitizer ────────────────────────────────────────────────────
 
     /// <summary>
     /// Removes characters illegal in Firestore document IDs and Photon userIds.
@@ -232,8 +199,6 @@ public class AuthManager : PersistentSingleton<AuthManager>, IConnectionCallback
         return result.Length > 0 ? result : "Player";
     }
 
-    // ── IConnectionCallbacks (Photon) ─────────────────────────────────────────
-
     public void OnConnected() { }
 
     public void OnConnectedToMaster()
@@ -247,7 +212,7 @@ public class AuthManager : PersistentSingleton<AuthManager>, IConnectionCallback
     {
         IsPhotonConnected = false;
 
-        // DisconnectByClientLogic is bl_Lobby's intentional reconnect — not an error.
+        // DisconnectByClientLogic is bl_Lobby's intentional reconnect, not an error
         if (cause != DisconnectCause.DisconnectByClientLogic)
             Debug.LogWarning($"[AuthManager] Photon disconnected: {cause}");
 

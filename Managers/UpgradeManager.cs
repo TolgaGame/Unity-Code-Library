@@ -29,19 +29,16 @@ public class UpgradeManager : MonoBehaviour
 
     private int _upgradePrice;
 
-    //////////////////////////////////////
-
     private void Start()
     {
         CheckUpgrades("TankHP");
         CheckUpgrades("TankSPEED");
         CheckUpgrades("TankGUNRELOAD");
 
-        //// Satellite Check
         if (PlayerPrefs.HasKey("Satellite"))
         {
             SatelliteButton.interactable = false;
-            SatellitePriceText.text = "BUYED";
+            SatellitePriceText.text = "BOUGHT";
         }
         else
         {
@@ -49,14 +46,13 @@ public class UpgradeManager : MonoBehaviour
         }
     }
 
-    /// CHECK UPGRADES LEVEL
     private void CheckUpgrades(string upgradeName)
     {
         if (PlayerPrefs.HasKey(upgradeName))
         {
             switch (upgradeName)
             {
-                case "TankHP" :
+                case "TankHP":
                     _tankHPLevel = PlayerPrefs.GetInt(upgradeName);
                     TankHPUpgradePriceText.text = (_tankHPLevel * 100).ToString();
                     if (_tankHPLevel == 5)
@@ -64,9 +60,9 @@ public class UpgradeManager : MonoBehaviour
                         TankHPUpgradeButton.interactable = false;
                         TankHPUpgradePriceText.text = "FULL";
                     }
-                break;
+                    break;
 
-                case "TankSPEED" :
+                case "TankSPEED":
                     _tankSPEEDLevel = PlayerPrefs.GetInt(upgradeName);
                     TankSPEEDUpgradePriceText.text = (_tankSPEEDLevel * 100).ToString();
                     if (_tankSPEEDLevel == 5)
@@ -74,9 +70,9 @@ public class UpgradeManager : MonoBehaviour
                         TankSPEEDUpgradeButton.interactable = false;
                         TankSPEEDUpgradePriceText.text = "FULL";
                     }
-                break;
+                    break;
 
-                case "TankGUNRELOAD" :
+                case "TankGUNRELOAD":
                     _tankGUNRELOADLevel = PlayerPrefs.GetInt(upgradeName);
                     TankGUNRELOADUpgradePriceText.text = (_tankGUNRELOADLevel * 100).ToString();
                     if (_tankGUNRELOADLevel == 5)
@@ -84,57 +80,55 @@ public class UpgradeManager : MonoBehaviour
                         TankGUNRELOADUpgradeButton.interactable = false;
                         TankGUNRELOADUpgradePriceText.text = "FULL";
                     }
-                break;
+                    break;
             }
         }
-        else // FIRST INIT UPGRADES
+        else
         {
+            // First launch: start every upgrade at level 1
             switch (upgradeName)
             {
-                case "TankHP" :
+                case "TankHP":
                     _tankHPLevel = 1;
                     PlayerPrefs.SetInt(upgradeName, 1);
                     TankHPUpgradePriceText.text = "100";
-                break;
+                    break;
 
-                case "TankSPEED" :
+                case "TankSPEED":
                     _tankSPEEDLevel = 1;
                     PlayerPrefs.SetInt(upgradeName, 1);
                     TankSPEEDUpgradePriceText.text = "100";
-                break;
+                    break;
 
-                case "TankGUNRELOAD" :
+                case "TankGUNRELOAD":
                     _tankGUNRELOADLevel = 1;
                     PlayerPrefs.SetInt(upgradeName, 1);
                     TankGUNRELOADUpgradePriceText.text = "100";
-                break;
+                    break;
             }
         }
     }
 
-    /// Upgrade Button
     public void OnPressedUPGRADEButton(string upgradeName)
     {
-        // Check Price
         switch (upgradeName)
         {
-            case "TankHP" :
+            case "TankHP":
                 _upgradePrice = int.Parse(TankHPUpgradePriceText.text);
-            break;
+                break;
 
-            case "TankSPEED" :
+            case "TankSPEED":
                 _upgradePrice = int.Parse(TankSPEEDUpgradePriceText.text);
-            break;
+                break;
 
-            case "TankGUNRELOAD" :
+            case "TankGUNRELOAD":
                 _upgradePrice = int.Parse(TankGUNRELOADUpgradePriceText.text);
-            break;
+                break;
         }
 
-        // Check my balance and buy
         if (PlayerPrefs.GetInt("money") >= _upgradePrice)
         {
-            Debug.Log("BUY PROCESS");
+            Debug.Log("[UpgradeManager] BUY PROCESS");
 
             PlayerPrefs.SetInt(upgradeName, (PlayerPrefs.GetInt(upgradeName) + 1));
 
@@ -145,16 +139,15 @@ public class UpgradeManager : MonoBehaviour
         }
         else
         {
-            Debug.Log("NOT ENOUGH MONEY");
+            Debug.Log("[UpgradeManager] NOT ENOUGH MONEY");
         }
     }
 
-    /// Satellite Buy Button
     public void OnPressedSatelliteButton()
     {
         if (PlayerPrefs.GetInt("money") >= 2000)
         {
-             Debug.Log("BUY PROCESS Satellite");
+            Debug.Log("[UpgradeManager] BUY PROCESS Satellite");
 
             PlayerPrefs.SetInt("Satellite", 1);
 
@@ -162,11 +155,11 @@ public class UpgradeManager : MonoBehaviour
             MoneyText.text = PlayerPrefs.GetInt("money").ToString();
 
             SatelliteButton.interactable = false;
-            SatellitePriceText.text = "BUYED";
+            SatellitePriceText.text = "BOUGHT";
         }
         else
         {
-            Debug.Log("NOT ENOUGH MONEY");
+            Debug.Log("[UpgradeManager] NOT ENOUGH MONEY");
         }
     }
 }

@@ -1,19 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// FriendManager.cs
-// Responsibilities:
-//   1. Load and maintain the local player's friend list from Firestore.
-//   2. Use Photon FindFriends to determine which friends are online.
-//   3. Expose events so UI can reactively render the friend list.
-//
-// Design notes:
-//   - Firestore is the source of truth for WHO your friends are.
-//   - Photon is the source of truth for WHETHER they are online right now.
-//   - FindFriends is polled on a configurable interval (default 30 s).
-//     Photon enforces its own rate limit on this call (~5 s minimum).
-//   - The Firestore listener is real-time: adding/removing a friend is
-//     reflected immediately without needing a manual refresh.
-// ─────────────────────────────────────────────────────────────────────────────
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -25,19 +9,17 @@ using Photon.Realtime;
 using UnityEngine;
 using WolfTeen.Friends;
 
+/// <summary>
+/// Keeps the local friend list in sync. Firestore is the source of truth for who the friends are;
+/// Photon FindFriends (polled, rate-limited by Photon to roughly 5 s) tells who is online.
+/// </summary>
 public class FriendManager : PersistentSingleton<FriendManager>, IMatchmakingCallbacks
 {
-    // ── Inspector ─────────────────────────────────────────────────────────────
-
     [Tooltip("How often (in seconds) to poll Photon for friend presence. Min ~5 s.")]
     [SerializeField] private float presencePollInterval = 30f;
 
-    // ── Public state ──────────────────────────────────────────────────────────
-
     /// <summary>The current friend list. Presence flags are updated on each poll.</summary>
     public IReadOnlyList<FriendEntry> Friends => _friends.AsReadOnly();
-
-    // ── Events ────────────────────────────────────────────────────────────────
 
     /// <summary>
     /// Fired whenever the friend list changes (load, add, remove)
@@ -46,15 +28,11 @@ public class FriendManager : PersistentSingleton<FriendManager>, IMatchmakingCal
     /// </summary>
     public static event Action<IReadOnlyList<FriendEntry>> OnFriendsUpdated;
 
-    // ── Internals ─────────────────────────────────────────────────────────────
-
     private readonly List<FriendEntry> _friends     = new List<FriendEntry>();
     private ListenerRegistration       _listenerReg;
     private Coroutine                  _pollCoroutine;
     private string                     _localUid;
     private bool                       _photonReady;
-
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     protected override void Awake()
     {
@@ -86,8 +64,6 @@ public class FriendManager : PersistentSingleton<FriendManager>, IMatchmakingCal
         _listenerReg = null;
     }
 
-    // ── Auth handlers ─────────────────────────────────────────────────────────
-
     private void HandleSignIn(UserProfile profile)
     {
         _localUid = profile.Uid;
@@ -104,8 +80,6 @@ public class FriendManager : PersistentSingleton<FriendManager>, IMatchmakingCal
         OnFriendsUpdated?.Invoke(_friends.AsReadOnly());
     }
 
-    // ── Firestore real-time listener ──────────────────────────────────────────
-
     private void AttachFirestoreListener()
     {
         if (string.IsNullOrEmpty(_localUid)) return;
@@ -119,7 +93,7 @@ public class FriendManager : PersistentSingleton<FriendManager>, IMatchmakingCal
 
         _listenerReg = friendsCol.Listen(snapshot =>
         {
-            // This callback is guaranteed to run on the main thread by the Firebase Unity SDK.
+            // The Firebase Unity SDK runs this callback on the main thread
             RebuildFriendList(snapshot);
         });
     }
@@ -145,21 +119,18 @@ public class FriendManager : PersistentSingleton<FriendManager>, IMatchmakingCal
             _friends.Add(entry);
         }
 
-        // Immediately notify UI with whatever presence data we already have.
+        // Notify the UI right away with whatever presence data we already have
         OnFriendsUpdated?.Invoke(_friends.AsReadOnly());
 
-        // If Photon is ready, do an immediate presence refresh.
         if (_photonReady)
             RequestPresenceRefresh();
     }
-
-    // ── Photon presence polling ───────────────────────────────────────────────
 
     private void HandlePhotonConnected()
     {
         _photonReady = true;
 
-        Debug.Log("[FriendSystem] ✔ Friend System Ready — Firebase authenticated, Photon connected, presence polling active.");
+        Debug.Log("[FriendManager] Friend system ready: Firebase authenticated, Photon connected, presence polling active.");
 
         if (_friends.Count > 0)
             StartPresencePolling();
@@ -170,7 +141,6 @@ public class FriendManager : PersistentSingleton<FriendManager>, IMatchmakingCal
         _photonReady = false;
         StopPresencePolling();
 
-        // Mark everyone offline.
         bool changed = false;
         foreach (var f in _friends)
         {
@@ -203,7 +173,7 @@ public class FriendManager : PersistentSingleton<FriendManager>, IMatchmakingCal
 
     private IEnumerator PresencePollCoroutine()
     {
-        // Small initial delay so Photon can fully settle after connecting.
+        // Let Photon settle after connecting before the first poll
         yield return new WaitForSeconds(2f);
 
         while (true)
@@ -221,9 +191,7 @@ public class FriendManager : PersistentSingleton<FriendManager>, IMatchmakingCal
     {
         if (!_photonReady || _friends.Count == 0) return;
 
-        // FindFriends requires being connected to Master (not inside a room for Photon PUN 2).
-        // If the local player is in a room the call is silently dropped, which is acceptable —
-        // the last known presence data remains valid.
+        // FindFriends is dropped while in a room (PUN 2); the last known presence stays valid
         if (PhotonNetwork.InRoom)
         {
             Debug.Log("[FriendManager] Skipping FindFriends: currently in a Photon room.");
@@ -242,11 +210,8 @@ public class FriendManager : PersistentSingleton<FriendManager>, IMatchmakingCal
             Debug.LogWarning("[FriendManager] PhotonNetwork.FindFriends returned false (not connected?).");
     }
 
-    // ── IMatchmakingCallbacks (Photon) ─────────────────────────────────────────
-
     public void OnFriendListUpdate(List<FriendInfo> photonFriendList)
     {
-        // Build a lookup by PhotonUserId for O(1) access.
         var presenceMap = new Dictionary<string, FriendInfo>(photonFriendList.Count);
         foreach (var info in photonFriendList)
             presenceMap[info.UserId] = info;
@@ -271,7 +236,7 @@ public class FriendManager : PersistentSingleton<FriendManager>, IMatchmakingCal
             OnFriendsUpdated?.Invoke(_friends.AsReadOnly());
     }
 
-    // Unused IMatchmakingCallbacks — required by the interface.
+    // Required by IMatchmakingCallbacks but unused
     public void OnJoinedLobby()                                          { }
     public void OnLeftLobby()                                            { }
     public void OnRoomListUpdate(List<RoomInfo> roomList)                { }

@@ -2,38 +2,38 @@
 
 ---
 
-## 1. TutorialStep Oluşturma
+## 1. Creating a TutorialStep
 
-Sağ tıkla → **Create → FPS → Tutorial Step**
+Right-click → **Create → FPS → Tutorial Step**
 
-| Alan | Açıklama |
+| Field | Description |
 |---|---|
-| Title / Description | Üstte görünen başlık ve açıklama |
-| Narrator Text | Typewriter ile yazılan diyalog |
-| Speaker Name / Image | Konuşmacı adı ve fotoğrafı |
-| Target Object | ReachLocation / LookAt için sahne objesi |
-| Target UI | Spotlight prefabı — **Project panelinden** sürükle |
-| Completion Type | Aşağıdaki tabloya bak |
-| Reach Distance | ReachLocation mesafesi (metre) |
-| Auto Skip | Yazı bitince 1 sn sonra otomatik geç |
-| Skippable | autoSkip=false iken Skip butonu göster |
+| Title / Description | Title and description shown at the top |
+| Narrator Text | Dialogue written out with a typewriter effect |
+| Speaker Name / Image | Speaker name and portrait |
+| Target Object | Scene object used by ReachLocation / LookAtObject |
+| Target UI | Spotlight prefab — drag it from the **Project panel** |
+| Completion Type | See the table below |
+| Reach Distance | ReachLocation distance (meters) |
+| Auto Skip | Advances automatically 2 seconds after the text finishes |
+| Skippable | Shows the Skip button |
 
 ---
 
-## 2. Sahne Kurulumu
+## 2. Scene Setup
 
-**TutorialManager** Inspector alanları:
-- **Steps** → TutorialStep asset'lerini sıraya diz
-- **UI** → TutorialUI bileşeni
-- **Player Transform** → Player objesi
-- **Main Canvas / Raycaster** → Tutorial canvas referansları
+**TutorialManager** Inspector fields:
+- **Steps** → arrange the TutorialStep assets in order
+- **UI** → the TutorialUI component
+- **Player Transform** → the Player object
+- **Main Canvas / Raycaster** → references to the tutorial canvas
 
-**Canvas Hierarchy:**
+**Canvas hierarchy:**
 ```
 TutorialCanvas  (Screen Space Overlay, Sort Order: 99)
-├── Overlay          → CanvasGroup bileşeni  ← overlayGroup
-├── NarratorPanel    → alt-orta panel
-│   ├── SpeakerImage → Image  ← konuşmacı fotoğrafı, soldan kayar
+├── Overlay          → CanvasGroup component  ← overlayGroup
+├── NarratorPanel    → bottom-center panel
+│   ├── SpeakerImage → Image  ← speaker portrait, slides in from the left
 │   ├── SpeakerName  → TextMeshProUGUI
 │   └── NarratorText → TextMeshProUGUI
 ├── TitleText        → TextMeshProUGUI
@@ -41,56 +41,56 @@ TutorialCanvas  (Screen Space Overlay, Sort Order: 99)
 └── SkipButton       → Button
 ```
 
-> Spotlight için 4 karartma paneli runtime'da **otomatik** oluşturulur, Inspector'da bir şey ekleme.
+> The 4 dimming panels used for the spotlight are created **automatically** at runtime. Don't add anything for them in the Inspector.
 
 ---
 
-## 3. Spotlight Kullanımı
+## 3. Using the Spotlight
 
-Belirli bir UI alanını karartmadan göstermek için:
+To highlight a specific UI area without dimming it:
 
-1. Boş bir GameObject oluştur, RectTransform'unu hedef alana boyutlandır
-2. **Prefab olarak kaydet** (Project paneli)
-3. TutorialStep'teki **Target UI** alanına bu prefabı sürükle
+1. Create an empty GameObject and size its RectTransform to the target area
+2. **Save it as a prefab** (Project panel)
+3. Drag that prefab into the **Target UI** field of the TutorialStep
 
-Sistem prefabı canvas'a instantiate eder, o Rect dışını karartır, step bitince destroy eder.
-`targetUI = null` → normal overlay, spotlight yok.
+The system instantiates the prefab on the canvas, dims everything outside its rect, and destroys it when the step ends.
+`targetUI = null` → normal overlay, no spotlight.
 
-> **Not:** `overlayGroup` narrator panel'in parent'ıysa `Spotlight Overlay Alpha` değerini 0 yerine 1 bırak.
+> **Note:** If `overlayGroup` is the parent of the narrator panel, leave `Spotlight Overlay Alpha` at 1 instead of 0.
 
 ---
 
-## 4. Completion Type Rehberi
+## 4. Completion Type Guide
 
-| Tip | Nasıl Tetiklenir |
+| Type | How It Is Triggered |
 |---|---|
-| `ReachLocation` | Update loop — `targetObject`'e `reachDistance`'dan yakın mı |
-| `LookAtObject` | Update loop — kameradan hedefe dot > 0.97 |
+| `ReachLocation` | Update loop — checks whether the player is closer to `targetObject` than `reachDistance` |
+| `LookAtObject` | Update loop — camera-to-target dot product > 0.97 |
 | `FireWeapon` | `TutorialTrigger.Notify(CompletionType.FireWeapon)` |
 | `EquipWeapon` | `TutorialTrigger.Notify(CompletionType.EquipWeapon)` |
-| `EnterTrigger` | `targetObject`'e `TutorialTrigger` bileşeni + Collider (IsTrigger) |
+| `EnterTrigger` | A `TutorialTrigger` component + Collider (IsTrigger) on `targetObject` |
 | `KillEnemy` | `TutorialTrigger.Notify(CompletionType.KillEnemy)` |
 | `UIElementInteract` | `TutorialTrigger.Notify(CompletionType.UIElementInteract)` |
 | `Manual` | `TutorialManager.Instance.NotifyEvent(CompletionType.Manual)` |
 
 ---
 
-## 5. İlerleme Mantığı
+## 5. Progression Logic
 
-- **autoSkip = true** → yazı biter, 1 sn bekler, otomatik sonraki step
-- **autoSkip = false** → sadece Skip butonuna basılınca ilerler (`skippable = true` olmalı)
+- **autoSkip = true** → the text finishes, waits 2 seconds, then moves to the next step automatically
+- **autoSkip = false** → advances only when the Skip button is pressed (`skippable` must be `true`)
 
 ---
 
-## 6. Gameplay Entegrasyonu
+## 6. Gameplay Integration
 
 ```csharp
-// Başlatmak
+// Start the tutorial
 TutorialManager.Instance.StartTutorial();
-TutorialManager.OnTutorialComplete += () => { /* oyun devam */ };
+TutorialManager.OnTutorialComplete += () => { /* resume the game */ };
 
-// Gameplay olaylarını bildirmek (static, referans gerekmez)
+// Notify gameplay events (static, no reference needed)
 TutorialTrigger.Notify(CompletionType.FireWeapon);
 TutorialTrigger.Notify(CompletionType.KillEnemy);
-TutorialTrigger.Notify(CompletionType.UIElementInteract); // input field submit vb.
+TutorialTrigger.Notify(CompletionType.UIElementInteract); // e.g. input field submit
 ```

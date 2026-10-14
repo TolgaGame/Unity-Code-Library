@@ -9,10 +9,9 @@ using UnityEditor.IMGUI.Controls;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-// How it works
-// For Textures: texture is downsampled to 32x32 pixels and then its pixels are used to calculate a hash value
-// For other assets: the file's MD5 hash is calculated
-// Assets that have the same hash value are considered to be the same. Since the algorithm is only hash-based, there might be rare false positives
+// For textures, the image is downsampled to 32x32 pixels and the pixels are hashed.
+// For other assets, the file's MD5 hash is used.
+// Assets sharing a hash are treated as duplicates; being hash-based, rare false positives are possible.
 public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
 {
     [Serializable]
@@ -53,7 +52,7 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
 
     private readonly MethodInfo instanceIDFromGUID = typeof(AssetDatabase).GetMethod("GetInstanceIDFromGUID", BindingFlags.NonPublic | BindingFlags.Static);
 
-    private List<DuplicateAssets> duplicates = new List<DuplicateAssets>(); // This is not readonly so that it can be serialized
+    private List<DuplicateAssets> duplicates = new List<DuplicateAssets>(); // Not readonly so that it can be serialized
 
     private SearchField searchField;
     private string searchTerm;
@@ -68,7 +67,7 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
     private Vector2 buttonPressPosition;
     private Vector2 scrollPos;
 
-    [MenuItem("Top Race 3d/Duplicate Asset Detector")]
+    [MenuItem("Top Race 3D/Duplicate Asset Detector")]
     private static void Init()
     {
         DuplicateAssetDetector window = GetWindow<DuplicateAssetDetector>();
@@ -88,7 +87,6 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
         RefreshSearch();
     }
 
-    // Show additional options in the window's context menu
     public void AddItemsToMenu(GenericMenu menu)
     {
         if (duplicates.Count > 0)
@@ -104,7 +102,7 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
             {
                 string json = GUIUtility.systemCopyBuffer;
                 LoadSession(json);
-                SaveSession(json); // If load succeeds, overwrite the saved session
+                SaveSession(json); // Persist only after a successful load
             });
         }
 
@@ -118,7 +116,6 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
         Event ev = Event.current;
         scrollPos = GUILayout.BeginScrollView(scrollPos);
 
-        // Calculate duplicate assets
         if (GUILayout.Button("Refresh"))
         {
             try
@@ -128,7 +125,7 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
                 CalculateDuplicateAssets();
                 SaveSession(null);
 
-                Debug.Log("Refreshed in " + (EditorApplication.timeSinceStartup - startTime) + " seconds.");
+                Debug.Log("[DuplicateAssetDetector] Refreshed in " + (EditorApplication.timeSinceStartup - startTime) + " seconds.");
             }
             catch (Exception e)
             {
@@ -145,7 +142,6 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
             GUIUtility.ExitGUI();
         }
 
-        // Draw found duplicate assets
         if (duplicates.Count > 0)
         {
             Color guiColor = GUI.color;
@@ -179,7 +175,6 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
                     {
                         if (ev.button == 0)
                         {
-                            // Select all duplicate assets in this group
                             List<Object> allDuplicates = new List<Object>(paths.Count);
                             for (int j = 0; j < paths.Count; j++)
                             {
@@ -191,7 +186,7 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
                                 Selection.objects = allDuplicates.ToArray();
                             else
                             {
-                                // While holding CTRL, either add all duplicate assets to current selection or remove them all from current selection
+                                // With CTRL/Shift held, toggle the whole group in the current selection instead of replacing it
                                 List<Object> selection = new List<Object>(Selection.objects);
                                 bool allDuplicatesAreInSelection = true;
                                 for (int j = 0; j < allDuplicates.Count; j++)
@@ -214,7 +209,6 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
                         }
                         else if (ev.button == 1)
                         {
-                            // Show an option to hide these duplicate assets from the list
                             int _i = duplicates.IndexOf(duplicateAssets[i]);
                             GenericMenu menu = new GenericMenu();
                             menu.AddItem(new GUIContent("Hide"), false, () => HideDuplicateAssetGroup(_i));
@@ -229,7 +223,7 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
 
                 for (int j = 0; j < paths.Count; j++)
                 {
-                    // Buttons must support 1) click and 2) drag & drop. The most reliable way is to simulate GUILayout.Button from scratch
+                    // A custom button is needed to support both click and drag & drop
                     buttonGUIContent.text = paths[j];
                     Rect buttonRect = GUILayoutUtility.GetRect(buttonGUIContent, EditorStyles.textArea);
                     int buttonControlID = GUIUtility.GetControlID(FocusType.Passive);
@@ -270,7 +264,6 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
                                 {
                                     if (ev.button == 0 && File.Exists(paths[j]))
                                     {
-                                        // Ping clicked duplicate asset
                                         double clickTime = EditorApplication.timeSinceStartup;
                                         if (clickTime - lastClickTime < 0.5f && lastClickedPath == paths[j])
                                         {
@@ -278,7 +271,7 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
                                                 Selection.objects = new Object[] { AssetDatabase.LoadMainAssetAtPath(paths[j]) };
                                             else
                                             {
-                                                // While holding CTRL, either add clicked asset to current selection or remove it from current selection
+                                                // With CTRL/Shift held, toggle the clicked asset in the current selection
                                                 Object asset = AssetDatabase.LoadMainAssetAtPath(paths[j]);
                                                 List<Object> selection = new List<Object>(Selection.objects);
                                                 if (!selection.Remove(asset))
@@ -297,7 +290,6 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
                                     }
                                     else if (ev.button == 1)
                                     {
-                                        // Show an option to hide that duplicate asset from the list
                                         int _i = duplicates.IndexOf(duplicateAssets[i]), _j = j;
                                         GenericMenu menu = new GenericMenu();
                                         menu.AddItem(new GUIContent("Hide"), false, () => HideDuplicateAsset(_i, _j));
@@ -327,11 +319,10 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
 
     private void CalculateDuplicateAssets()
     {
-        // Dummy Texture is used while calculating Textures' hashes
+        // The dummy texture is the scratch asset used to read back downsampled pixels for texture hashing
         CreateDummyTexture();
 
-        // Key: hash value
-        // Value: all assets that are sharing that hash
+        // Key: hash value, Value: all assets sharing that hash
         Dictionary<string, List<string>> texturesHashLookup = new Dictionary<string, List<string>>(512);
         Dictionary<string, List<string>> genericHashLookup = new Dictionary<string, List<string>>(2048);
 
@@ -363,11 +354,6 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
                     hash = CalculateTextureHash(paths[i]).ToString();
                     hashLookup = texturesHashLookup;
                 }
-                //else if( typeof( GameObject ).IsAssignableFrom( assetType ) && !paths[i].EndsWith( ".prefab" ) && AssetImporter.GetAtPath( paths[i] ) as ModelImporter )
-                //{
-                //	hash = CalculateModelHash( paths[i] ).ToString();
-                //	hashLookup = modelsHashLookup;
-                //}
                 else
                 {
                     hash = CalculateFileHash(paths[i]);
@@ -391,7 +377,6 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
         }
     }
 
-    // Finds entries in the lookup table that have multiple paths (i.e. duplicates)
     private void FindDuplicatesInLookup(Dictionary<string, List<string>> lookup, bool sortByExtension)
     {
         int duplicatesPrevCount = duplicates.Count;
@@ -406,13 +391,12 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
             }
         }
 
-        // Sort each lookup results amongst themselves
+        // Keep each lookup's results grouped together and sorted among themselves
         int count = duplicates.Count - duplicatesPrevCount;
         if (count > 1)
             duplicates.Sort(duplicatesPrevCount, count, new DuplicateAssets.Comparer() { sortByExtension = sortByExtension });
     }
 
-    // Creates dummy Texture asset that will be used to generate Textures' hashes
     private void CreateDummyTexture()
     {
         if (!File.Exists(DUMMY_TEXTURE_PATH))
@@ -432,7 +416,6 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
         textureImporter.SaveAndReimport();
     }
 
-    // Refreshes search results
     private void RefreshSearch()
     {
         if (string.IsNullOrEmpty(searchTerm))
@@ -456,7 +439,6 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
         }
     }
 
-    // Calculates file's MD5 hash
     private string CalculateFileHash(string assetPath)
     {
         using (MD5 md5 = MD5.Create())
@@ -466,7 +448,7 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
         }
     }
 
-    // Calculates downsized Texture's pixels' hash
+    // Hashes the 32x32 downsampled pixels (the dummy texture's max size) so only visual content matters
     private long CalculateTextureHash(string texturePath)
     {
         File.Copy(texturePath, DUMMY_TEXTURE_PATH, true);
@@ -487,8 +469,7 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
         }
     }
 
-    // Calculates model's vertices hash
-    // Not used because multiple FBX files may have shared vertices but different animation clips
+    // Unused: FBX files may share vertices but differ in animation clips
     private long CalculateModelHash(string modelPath)
     {
         long hash = 17;
@@ -514,7 +495,6 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
         return hash;
     }
 
-    // Hides the duplicate asset at the specified index
     private void HideDuplicateAsset(int groupIndex, int assetIndex)
     {
         if (duplicates[groupIndex].paths.Count <= 2)
@@ -532,7 +512,6 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
         Repaint();
     }
 
-    // Hides all duplicate assets in the specified group
     private void HideDuplicateAssetGroup(int groupIndex)
     {
         int searchGroupIndex = searchResults.IndexOf(duplicates[groupIndex]);
@@ -545,7 +524,6 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
         Repaint();
     }
 
-    // Saves current session to file
     private void SaveSession(string json)
     {
         if (string.IsNullOrEmpty(json))
@@ -554,7 +532,6 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
         File.WriteAllText(SAVE_FILE_PATH, json);
     }
 
-    // Restores previous session
     private void LoadSession(string json)
     {
         if (string.IsNullOrEmpty(json))
@@ -567,7 +544,7 @@ public class DuplicateAssetDetector : EditorWindow, IHasCustomMenu
 
         SaveData saveData = JsonUtility.FromJson<SaveData>(json);
 
-        // Remove non-existent duplicates
+        // Files may have been deleted since the session was saved
         for (int i = saveData.duplicates.Count - 1; i >= 0; i--)
         {
             List<string> paths = saveData.duplicates[i].paths;

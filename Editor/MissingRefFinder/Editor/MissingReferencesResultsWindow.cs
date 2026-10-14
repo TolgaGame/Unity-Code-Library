@@ -33,11 +33,8 @@ public class MissingReferencesResultsWindow : EditorWindow
             selectedGameObject = value;
             if (!changed) return;
 
-            if (!selectedGameObject)
-            {
-                // Remove results?
-                return;
-            }
+            if (!selectedGameObject) return;
+
             refreshMissingReferences();
         }
     }
@@ -73,9 +70,8 @@ public class MissingReferencesResultsWindow : EditorWindow
 
     private void OnGUI()
     {
-
-        SelectedGameObject = (GameObject)EditorGUILayout.ObjectField("Game Object: ", SelectedGameObject, typeof(GameObject), true);
-		if(GUILayout.Button("Refresh")) refreshMissingReferences();
+        SelectedGameObject = (GameObject)EditorGUILayout.ObjectField("Game Object", SelectedGameObject, typeof(GameObject), true);
+        if (GUILayout.Button("Refresh")) refreshMissingReferences();
 
         EditorGUILayout.Space();
 
@@ -109,11 +105,14 @@ public class MissingReferencesResultsWindow : EditorWindow
     private bool drawCollapsibleSection(string sectionTitle, int resultCount, bool isExpanded)
     {
         EditorGUILayout.BeginHorizontal();
-		if (resultCount > 0) {
-			isExpanded = EditorGUILayout.Foldout(isExpanded, $"{sectionTitle} ({resultCount} results)", true);
-		} else {
-			EditorGUILayout.LabelField($"{sectionTitle} ({resultCount} results)");
-		}
+        if (resultCount > 0)
+        {
+            isExpanded = EditorGUILayout.Foldout(isExpanded, $"{sectionTitle} ({resultCount} results)", true);
+        }
+        else
+        {
+            EditorGUILayout.LabelField($"{sectionTitle} ({resultCount} results)");
+        }
         EditorGUILayout.EndHorizontal();
         return isExpanded;
     }

@@ -1,19 +1,15 @@
 using UnityEngine;
-using UnityEngine.UI;
 using System.Collections;
 using UnityEngine.Networking;
 
 public class InternetCheck : MonoBehaviour
 {
-
     public GameObject CheckPanel;
 
     public string testUrl = "https://www.google.com";
     public float checkInterval = 5f;
 
     private bool isInternetAvailable;
-
-    /////////////////////
 
     private void Start()
     {
@@ -25,7 +21,7 @@ public class InternetCheck : MonoBehaviour
         while (true)
         {
             yield return StartCoroutine(CheckInternetConnection());
-            Debug.Log("Internet: " + (isInternetAvailable ? "YES" : "NO"));
+            Debug.Log("[InternetCheck] Internet: " + (isInternetAvailable ? "YES" : "NO"));
             yield return new WaitForSeconds(checkInterval);
         }
     }
@@ -55,5 +51,4 @@ public class InternetCheck : MonoBehaviour
     {
         return isInternetAvailable;
     }
-
 }

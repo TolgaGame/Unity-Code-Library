@@ -1,4 +1,3 @@
-// Tools/FixTextureCompressionDXT5_GameSourceSprites.cs
 using UnityEditor;
 using UnityEngine;
 
@@ -18,15 +17,13 @@ public class FixTextureCompressionDXT5_GameSourceSprites
 
             if (importer != null && importer.textureType == TextureImporterType.Sprite)
             {
-                // Genel ayarlar
                 importer.textureCompression = TextureImporterCompression.Compressed;
                 importer.crunchedCompression = false;
                 importer.mipmapEnabled = false;
 
-                // PC (Standalone) override ayarları
                 TextureImporterPlatformSettings pcSettings = importer.GetPlatformTextureSettings("Standalone");
                 pcSettings.overridden = true;
-                pcSettings.format = TextureImporterFormat.DXT5; // RGBA Compressed DXT5 (BC3)
+                pcSettings.format = TextureImporterFormat.DXT5;
                 pcSettings.textureCompression = TextureImporterCompression.Compressed;
                 pcSettings.crunchedCompression = false;
                 pcSettings.maxTextureSize = 512;
@@ -34,11 +31,11 @@ public class FixTextureCompressionDXT5_GameSourceSprites
                 importer.SetPlatformTextureSettings(pcSettings);
 
                 importer.SaveAndReimport();
-                
+
                 fixedCount++;
             }
         }
 
-        Debug.Log($"✅ Fixed {fixedCount} sprite(s) in '{targetFolder}' to DXT5 (PC Override enabled).");
+        Debug.Log($"[FixTextureCompressionDXT5_GameSourceSprites] Fixed {fixedCount} sprite(s) in '{targetFolder}' to DXT5 (Standalone override enabled).");
     }
 }

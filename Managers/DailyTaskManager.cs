@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 using ColorCraze.Game.Common;
 using ColorCraze.Core;
@@ -14,8 +15,6 @@ public class DailyTask
     public bool isCompleted;
     public bool isClaimed;
 }
-
-//////////////////////////////////
 
 [Serializable]
 public class TaskUIRow
@@ -63,17 +62,14 @@ public class TaskUIRow
             else
                 completedIcon.sprite = data.isCompleted ? completedSprite : notCompletedSprite;
         }
-       
+
         if (claimButton)
         {
             claimButton.interactable = data.isCompleted && !data.isClaimed;
             claimButton.gameObject.SetActive(true);
         }
     }
-
 }
-
-/////////////////////////////////////
 
 public class DailyTaskManager : MonoBehaviour
 {
@@ -96,9 +92,10 @@ public class DailyTaskManager : MonoBehaviour
         "Use 3 different powerups in a single level"
     };
 
-    [Header("Task Reward Desc")]
+    [Header("Task Reward Descriptions")]
     [TextArea]
-    public string[] rewardtDescriptions = new[]
+    [FormerlySerializedAs("rewardtDescriptions")]
+    public string[] rewardDescriptions = new[]
     {
         "Reward: 500 Coins",
         "Reward: 1 Brush PowerUp",
@@ -106,19 +103,15 @@ public class DailyTaskManager : MonoBehaviour
         "Reward: 1 Color Bomb PowerUp"
     };
 
-    /////////////////////////
-
     private readonly List<DailyTask> _tasks = new List<DailyTask>(4);
     private Coroutine _countdownRoutine;
     private DateTime _lastResetUtc;
     private const string PlayerPrefKeyLastReset = "DailyTasks_LastResetUtc";
 
     private string TaskCompletedKey(int i) => $"DailyTasks_Task_{i}_Completed";
-    private string TaskClaimedKey(int i) => $"DailyTasks_Task_{i}_Claimed";
+    private string TaskClaimedKey(int i) =>     $"DailyTasks_Task_{i}_Claimed";
 
-    ///////////////////////////////////////////////
-
-    #region Unity Callbacks
+        #region Unity Callbacks
 
     private void Awake()
     {
@@ -217,8 +210,8 @@ public class DailyTaskManager : MonoBehaviour
             int idx = i;
             var row = taskRows != null && i < taskRows.Length ? taskRows[i] : null;
             if (row == null) continue;
-            if (rewardtDescriptions != null && idx < rewardtDescriptions.Length)
-                row.rewardText = rewardtDescriptions[idx];
+            if (rewardDescriptions != null && idx < rewardDescriptions.Length)
+                row.rewardText = rewardDescriptions[idx];
 
             row.Bind(
                 _tasks[idx],
@@ -346,7 +339,6 @@ public class DailyTaskManager : MonoBehaviour
             SetTaskCompleted(2, true);
         if (task4Completed == 1)
             SetTaskCompleted(3, true);
-
     }
 
     #endregion
@@ -380,11 +372,11 @@ public class DailyTaskManager : MonoBehaviour
 
     private void AwardReward(int index)
     {
-        Debug.Log($"DailyTaskManager: Reward granted for task {index}.");
+        Debug.Log($"[DailyTaskManager] Reward granted for task {index}.");
         if (index == 0)
         {
             PuzzleMatchManager.instance.coinsSystem.BuyCoins(500);
-            Debug.Log("Reward: 500 Coins");
+            Debug.Log("[DailyTaskManager] Reward: 500 Coins");
         }
         else if (index == 1)
         {
@@ -393,7 +385,7 @@ public class DailyTaskManager : MonoBehaviour
             int rewardValue = currentValue;
 
             PlayerPrefs.SetInt(playerPrefsKey, rewardValue);
-            Debug.Log("Reward: 1 Brush PowerUp");
+            Debug.Log("[DailyTaskManager] Reward: 1 Brush PowerUp");
         }
         else if (index == 2)
         {
@@ -402,7 +394,7 @@ public class DailyTaskManager : MonoBehaviour
             int rewardValue = currentValue;
 
             PlayerPrefs.SetInt(playerPrefsKey, rewardValue);
-            Debug.Log("Reward: 1 bomb PowerUp");
+            Debug.Log("[DailyTaskManager] Reward: 1 Bomb PowerUp");
         }
         else if (index == 3)
         {
@@ -411,7 +403,7 @@ public class DailyTaskManager : MonoBehaviour
             int rewardValue = currentValue;
 
             PlayerPrefs.SetInt(playerPrefsKey, rewardValue);
-            Debug.Log("Reward: 1 color bomb PowerUp");
+            Debug.Log("[DailyTaskManager] Reward: 1 Color Bomb PowerUp");
         }
         SoundManager.instance.PlaySound("AwardPopup");
     }
@@ -439,5 +431,4 @@ public class DailyTaskManager : MonoBehaviour
     }
 
     #endregion
-
 }

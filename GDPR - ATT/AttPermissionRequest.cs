@@ -1,23 +1,19 @@
-/// *** Sahneye ekle ayrı bir obje olarak : Add object to scene and
-/// ATT Perm Request other class Call
+// Add this to the scene as a separate GameObject so the ATT prompt is requested on startup.
 using UnityEngine;
 #if UNITY_IOS
-// Include the IosSupport namespace if running on iOS:
 using Unity.Advertisement.IosSupport;
 #endif
-
 
 public class AttPermissionRequest : MonoBehaviour
 {
     private void Awake()
     {
 #if UNITY_IOS
-        // Check the user's consent status.
-        // If the status is undetermined, display the request request:
-        if(ATTrackingStatusBinding.GetAuthorizationTrackingStatus() == ATTrackingStatusBinding.AuthorizationTrackingStatus.NOT_DETERMINED) {
+        // Only prompt while the user's tracking status is still undetermined.
+        if (ATTrackingStatusBinding.GetAuthorizationTrackingStatus() == ATTrackingStatusBinding.AuthorizationTrackingStatus.NOT_DETERMINED)
+        {
             ATTrackingStatusBinding.RequestAuthorizationTracking();
         }
 #endif
     }
-
 }

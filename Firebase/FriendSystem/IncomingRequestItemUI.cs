@@ -1,14 +1,9 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// IncomingRequestItemUI.cs
-// Attach to the IncomingRequestItem prefab.
-// One row per incoming friend request.
-// ─────────────────────────────────────────────────────────────────────────────
-
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using WolfTeen.Friends;
 
+/// <summary>One row per incoming friend request.</summary>
 public class IncomingRequestItemUI : MonoBehaviour
 {
     [Header("References")]
@@ -34,7 +29,7 @@ public class IncomingRequestItemUI : MonoBehaviour
     {
         SetButtonsInteractable(false);
         await FriendRequestManager.Instance.AcceptRequestAsync(_entry.Uid);
-        // Firestore listener otomatik listeyi günceller, bu obje zaten destroy edilir.
+        // The Firestore listener refreshes the list, which destroys this row
     }
 
     private async void OnRejectClicked()

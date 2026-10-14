@@ -3,32 +3,26 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 
-public class EditorTools : Editor {
-
-    ///////////////////////////// SCENE SHORTCUTS
-
-    [MenuItem("Tools/Scenes/MENU")]
+public class EditorTools : Editor
+{
+    [MenuItem("Tools/Scenes/Menu")]
     public static void OpenSceneMENU()
     {
-        // Kaydedilmemiş değişiklikler olup olmadığını kontrol et
+        // Saves first so the scene switch never discards unsaved changes
         if (EditorSceneManager.GetActiveScene().isDirty)
         {
-            // Değişiklikleri kaydet
             EditorSceneManager.SaveOpenScenes();
         }
 
-        // Sahne dosya yolunu burada belirtin
         string scenePath = "Assets/_GameSource/_Scenes/Menu.unity";
         EditorSceneManager.OpenScene(scenePath);
     }
 
-    [MenuItem("Tools/Scenes/LOADING")]
+    [MenuItem("Tools/Scenes/Loading")]
     public static void OpenSceneLoading()
     {
-        // Kaydedilmemiş değişiklikler olup olmadığını kontrol et
         if (EditorSceneManager.GetActiveScene().isDirty)
         {
-            // Değişiklikleri kaydet
             EditorSceneManager.SaveOpenScenes();
         }
 
@@ -36,13 +30,11 @@ public class EditorTools : Editor {
         EditorSceneManager.OpenScene(scenePath);
     }
 
-    [MenuItem("Tools/Scenes/STUNT PARK")]
+    [MenuItem("Tools/Scenes/Stunt Park")]
     public static void OpenSceneStuntPark()
     {
-        // Kaydedilmemiş değişiklikler olup olmadığını kontrol et
         if (EditorSceneManager.GetActiveScene().isDirty)
         {
-            // Değişiklikleri kaydet
             EditorSceneManager.SaveOpenScenes();
         }
 
@@ -50,19 +42,15 @@ public class EditorTools : Editor {
         EditorSceneManager.OpenScene(scenePath);
     }
 
-    [MenuItem("Tools/Scenes/RAMP")]
+    [MenuItem("Tools/Scenes/Ramp")]
     public static void OpenSceneRamp()
     {
-        // Kaydedilmemiş değişiklikler olup olmadığını kontrol et
         if (EditorSceneManager.GetActiveScene().isDirty)
         {
-            // Değişiklikleri kaydet
             EditorSceneManager.SaveOpenScenes();
         }
 
         string scenePath = "Assets/_GameSource/_Scenes/Publish/Ramp.unity";
         EditorSceneManager.OpenScene(scenePath);
     }
-
-
 }

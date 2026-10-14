@@ -1,16 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// GameInvitePopupUI.cs
-// Attach to the GameInvitePopup panel (a root GameObject on a persistent Canvas).
-//
-// Unity Setup:
-//   • popupRoot    → the panel GameObject to show/hide
-//   • txtMessage   → e.g.  "PlayerX seni odaya davet ediyor!"
-//   • btnAccept    → "Kabul Et" button
-//   • btnReject    → "Reddet"  button
-//
-// Multiple invites are queued and shown one at a time.
-// ─────────────────────────────────────────────────────────────────────────────
-
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
@@ -18,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using WolfTeen.Friends;
 
+/// <summary>Popup that shows incoming game invites one at a time; extra invites are queued.</summary>
 public class GameInvitePopupUI : MonoBehaviour
 {
     [Header("References")]
@@ -26,17 +14,13 @@ public class GameInvitePopupUI : MonoBehaviour
     [SerializeField] private Button          btnAccept;
     [SerializeField] private Button          btnReject;
 
-    // ── Internals ─────────────────────────────────────────────────────────────
-
     private readonly Queue<GameInviteData> _queue   = new Queue<GameInviteData>();
     private GameInviteData                 _current;
     private bool                           _showing;
     private Coroutine                      _autoRejectCoroutine;
 
-    // Auto-reject the popup if the user doesn't respond within this time.
+    // The invite is rejected automatically if the user does not respond in time
     private const float AutoRejectSeconds = 600f; // 10 minutes
-
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     private void Start()
     {
@@ -55,11 +39,9 @@ public class GameInvitePopupUI : MonoBehaviour
         GameInviteManager.OnInviteReceived -= EnqueueInvite;
     }
 
-    // ── Queue management ──────────────────────────────────────────────────────
-
     private void EnqueueInvite(GameInviteData invite)
     {
-        Debug.Log($"[GameInvitePopupUI] Davet geldi! Gönderen: {invite.InviterUsername}, Oda: {invite.RoomName}");
+        Debug.Log($"[GameInvitePopupUI] Invite received. Sender: {invite.InviterUsername}, Room: {invite.RoomName}");
         _queue.Enqueue(invite);
         if (!_showing) ShowNext();
     }
@@ -82,7 +64,7 @@ public class GameInvitePopupUI : MonoBehaviour
         _current = _queue.Dequeue();
         _showing  = true;
 
-        txtMessage.text = $"{_current.InviterUsername} seni odaya davet ediyor!";
+        txtMessage.text = $"{_current.InviterUsername} invited you to their room!";
         SetButtonsInteractable(true);
         popupRoot.SetActive(true);
 
@@ -99,8 +81,6 @@ public class GameInvitePopupUI : MonoBehaviour
         ShowNext();
     }
 
-    // ── Button handlers ───────────────────────────────────────────────────────
-
     private async void OnAcceptClicked()
     {
         if (_autoRejectCoroutine != null) { StopCoroutine(_autoRejectCoroutine); _autoRejectCoroutine = null; }
@@ -116,8 +96,6 @@ public class GameInvitePopupUI : MonoBehaviour
         await GameInviteManager.Instance.RejectInviteAsync(_current);
         ShowNext();
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private void SetButtonsInteractable(bool value)
     {

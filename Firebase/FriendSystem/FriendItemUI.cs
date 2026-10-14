@@ -1,14 +1,10 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// FriendItemUI.cs
-// Attach to the FriendItem prefab (one row in the friend list).
-// FriendListView spawns this and calls Setup().
-// ─────────────────────────────────────────────────────────────────────────────
-
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 using WolfTeen.Friends;
 
+/// <summary>One row of the friend list; spawned by FriendListView, which calls Setup().</summary>
 public class FriendItemUI : MonoBehaviour
 {
     [Header("References")]
@@ -17,10 +13,11 @@ public class FriendItemUI : MonoBehaviour
     [SerializeField] private Button          btnRemove;
     [SerializeField] private Button          btnInviteGame;
 
-    [Header("Colors")]
-    [SerializeField] private Sprite onlineColor;
-    [SerializeField] private Sprite offlineColor;
-
+    [Header("Sprites")]
+    [FormerlySerializedAs("onlineColor")]
+    [SerializeField] private Sprite onlineSprite;
+    [FormerlySerializedAs("offlineColor")]
+    [SerializeField] private Sprite offlineSprite;
 
     private FriendEntry _entry;
 
@@ -29,7 +26,7 @@ public class FriendItemUI : MonoBehaviour
         _entry = entry;
 
         txtUsername.text         = entry.Username;
-        imgOnlineIndicator.sprite = entry.IsOnline ? onlineColor : offlineColor;
+        imgOnlineIndicator.sprite = entry.IsOnline ? onlineSprite : offlineSprite;
 
         btnRemove.onClick.RemoveAllListeners();
         btnRemove.onClick.AddListener(OnRemoveClicked);
@@ -41,10 +38,10 @@ public class FriendItemUI : MonoBehaviour
         }
     }
 
-    // Called when presence data is refreshed — no need to rebuild the whole list.
+    // Lets presence refreshes update the row without rebuilding the whole list
     public void UpdatePresence(bool isOnline)
     {
-        imgOnlineIndicator.sprite = isOnline ? onlineColor : offlineColor;
+        imgOnlineIndicator.sprite = isOnline ? onlineSprite : offlineSprite;
     }
 
     public void SetInviteButtonVisible(bool visible)
@@ -57,8 +54,7 @@ public class FriendItemUI : MonoBehaviour
     {
         btnRemove.interactable = false;
         await FriendRequestManager.Instance.RemoveFriendAsync(_entry.Uid);
-        // FriendManager's Firestore listener will rebuild the list automatically.
-        // No need to destroy this object manually.
+        // FriendManager's Firestore listener rebuilds the list, so this row is not destroyed here
         btnRemove.interactable = true;
     }
 

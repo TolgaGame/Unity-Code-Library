@@ -141,7 +141,7 @@ Editor tools are especially useful when working on larger projects where repetit
 
 ### 📱 GDPR / ATT
 
-Mobile privacy and tracking-related utilities.
+Mobile privacy- and tracking-related utilities.
 
 Useful when dealing with:
 
@@ -215,7 +215,6 @@ Some systems may depend on:
 * Third-party SDKs
 * Firebase
 * Advertisement SDKs
-* Unity packages
 * Project-specific classes
 * Additional configuration
 
@@ -247,13 +246,13 @@ Think of it as a **personal Unity toolbox that is continuously growing.**
 Unity-Code-Library/
 │
 ├── ADS/
-│   └── Advertisement related systems
+│   └── Advertisement-related systems
 │
 ├── Editor/
 │   └── Unity Editor tools
 │
 ├── Firebase/
-│   └── Firebase related systems
+│   └── Firebase-related systems
 │
 ├── GDPR - ATT/
 │   └── Mobile privacy / ATT utilities
@@ -265,7 +264,7 @@ Unity-Code-Library/
 │   └── Runtime and Editor tutorial tools
 │
 ├── Utilities/
-│   └── General purpose Unity utilities
+│   └── General-purpose Unity utilities
 │
 ├── LICENSE
 └── README.md

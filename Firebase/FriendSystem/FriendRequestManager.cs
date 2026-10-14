@@ -1,19 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// FriendRequestManager.cs
-// Responsibilities:
-//   1. Send friend requests by target username.
-//   2. Accept / reject incoming requests.
-//   3. Cancel outgoing requests.
-//   4. Remove a friend.
-//   5. Maintain real-time lists of incoming and outgoing requests via Firestore.
-//
-// Firestore paths used:
-//   users/{uid}                           — for username lookup
-//   friends/{uid}/list/{friendUid}        — persistent friend list
-//   friendRequests/{uid}/incoming/{fromUid}
-//   friendRequests/{uid}/outgoing/{toUid}
-// ─────────────────────────────────────────────────────────────────────────────
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,22 +7,21 @@ using Firebase.Firestore;
 using UnityEngine;
 using WolfTeen.Friends;
 
+/// <summary>
+/// Handles sending, accepting, rejecting and cancelling friend requests and removing friends.
+/// Firestore paths: users/{uid}, friends/{uid}/list/{friendUid},
+/// friendRequests/{uid}/incoming/{fromUid}, friendRequests/{uid}/outgoing/{toUid}.
+/// </summary>
 public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
 {
-    // ── Public state ──────────────────────────────────────────────────────────
-
     public IReadOnlyList<FriendRequestEntry> IncomingRequests => _incoming.AsReadOnly();
     public IReadOnlyList<FriendRequestEntry> OutgoingRequests => _outgoing.AsReadOnly();
-
-    // ── Events ────────────────────────────────────────────────────────────────
 
     /// <summary>Fires whenever the incoming request list changes.</summary>
     public static event Action<IReadOnlyList<FriendRequestEntry>> OnIncomingRequestsUpdated;
 
     /// <summary>Fires whenever the outgoing request list changes.</summary>
     public static event Action<IReadOnlyList<FriendRequestEntry>> OnOutgoingRequestsUpdated;
-
-    // ── Internals ─────────────────────────────────────────────────────────────
 
     private readonly List<FriendRequestEntry> _incoming = new List<FriendRequestEntry>();
     private readonly List<FriendRequestEntry> _outgoing = new List<FriendRequestEntry>();
@@ -48,8 +31,6 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
 
     private UserProfile          _localUser;
     private FirebaseFirestore    _db;
-
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     private void OnEnable()
     {
@@ -68,8 +49,6 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
         DetachListeners();
     }
 
-    // ── Auth handlers ─────────────────────────────────────────────────────────
-
     private void HandleSignIn(UserProfile profile)
     {
         _localUser = profile;
@@ -86,8 +65,6 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
         OnIncomingRequestsUpdated?.Invoke(_incoming.AsReadOnly());
         OnOutgoingRequestsUpdated?.Invoke(_outgoing.AsReadOnly());
     }
-
-    // ── Firestore listeners ────────────────────────────────────────────────────
 
     private void AttachListeners()
     {
@@ -145,8 +122,6 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
         };
     }
 
-    // ── Send friend request ────────────────────────────────────────────────────
-
     /// <summary>
     /// Sends a friend request to the user with the given username.
     /// Returns a result code so the UI can show the appropriate message.
@@ -158,11 +133,9 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
 
         string sanitized = AuthManager.SanitizeUsername(targetUsername);
 
-        // Prevent self-requests.
         if (string.Equals(sanitized, _localUser.Username, StringComparison.OrdinalIgnoreCase))
             return FriendRequestResult.CannotAddSelf;
 
-        // ── Step 1: Look up the target user by username ───────────────────────
         QuerySnapshot query = await _db
             .Collection("users")
             .WhereEqualTo("username", sanitized)
@@ -178,7 +151,6 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
                                          ? targetDoc.GetValue<string>("photonUserId")
                                          : sanitized;
 
-        // ── Step 2: Check not already friends ─────────────────────────────────
         DocumentSnapshot existingFriend = await _db
             .Collection("friends")
             .Document(_localUser.Uid)
@@ -189,7 +161,6 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
         if (existingFriend.Exists)
             return FriendRequestResult.AlreadyFriends;
 
-        // ── Step 3: Check for duplicate outgoing request ──────────────────────
         DocumentSnapshot existingOutgoing = await _db
             .Collection("friendRequests")
             .Document(_localUser.Uid)
@@ -200,7 +171,7 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
         if (existingOutgoing.Exists)
             return FriendRequestResult.RequestAlreadySent;
 
-        // ── Step 4: Check if they already sent us a request ───────────────────
+        // The target already asked us: the user should accept that request instead
         DocumentSnapshot existingIncoming = await _db
             .Collection("friendRequests")
             .Document(_localUser.Uid)
@@ -211,17 +182,18 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
         if (existingIncoming.Exists)
             return FriendRequestResult.IncomingRequestExists;
 
-        // ── Step 5: Write both request documents in a batch ───────────────────
         Timestamp now = Timestamp.GetCurrentTimestamp();
 
-        var requestData = new Dictionary<string, object>
+        // Stored in the target's incoming list, so it describes us
+        var incomingRequestData = new Dictionary<string, object>
         {
             { "username",     _localUser.Username     },
             { "photonUserId", _localUser.PhotonUserId },
             { "sentAt",       now                     }
         };
 
-        var targetRequestData = new Dictionary<string, object>
+        // Stored in our outgoing list, so it describes the target
+        var outgoingRequestData = new Dictionary<string, object>
         {
             { "username",     sanitized    },
             { "photonUserId", targetPhotonId },
@@ -230,15 +202,13 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
 
         WriteBatch batch = _db.StartBatch();
 
-        // incoming for the target
         batch.Set(
             _db.Collection("friendRequests").Document(targetUid).Collection("incoming").Document(_localUser.Uid),
-            requestData);
+            incomingRequestData);
 
-        // outgoing for us
         batch.Set(
             _db.Collection("friendRequests").Document(_localUser.Uid).Collection("outgoing").Document(targetUid),
-            targetRequestData);
+            outgoingRequestData);
 
         try
         {
@@ -253,8 +223,6 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
         }
     }
 
-    // ── Accept request ─────────────────────────────────────────────────────────
-
     /// <summary>
     /// Accepts an incoming friend request from <paramref name="fromUid"/>.
     /// Atomically: adds friend entries on both sides, removes both request documents.
@@ -263,7 +231,7 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
     {
         if (_localUser == null) return false;
 
-        // We need the sender's data from the incoming request document.
+        // The sender's username and Photon ID come from the incoming request document
         DocumentSnapshot incomingDoc = await _db
             .Collection("friendRequests")
             .Document(_localUser.Uid)
@@ -282,7 +250,6 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
 
         Timestamp now = Timestamp.GetCurrentTimestamp();
 
-        // Friend entry stored under the local user's friends list.
         var myFriendEntry = new Dictionary<string, object>
         {
             { "username",     fromUsername     },
@@ -290,7 +257,6 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
             { "addedAt",      now              }
         };
 
-        // Friend entry stored under the other user's friends list.
         var theirFriendEntry = new Dictionary<string, object>
         {
             { "username",     _localUser.Username     },
@@ -300,7 +266,6 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
 
         WriteBatch batch = _db.StartBatch();
 
-        // Add friend on both sides.
         batch.Set(
             _db.Collection("friends").Document(_localUser.Uid).Collection("list").Document(fromUid),
             myFriendEntry);
@@ -309,7 +274,6 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
             _db.Collection("friends").Document(fromUid).Collection("list").Document(_localUser.Uid),
             theirFriendEntry);
 
-        // Remove the request on both sides.
         batch.Delete(
             _db.Collection("friendRequests").Document(_localUser.Uid).Collection("incoming").Document(fromUid));
 
@@ -328,8 +292,6 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
             return false;
         }
     }
-
-    // ── Reject request ─────────────────────────────────────────────────────────
 
     /// <summary>
     /// Rejects an incoming friend request from <paramref name="fromUid"/>.
@@ -360,8 +322,6 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
         }
     }
 
-    // ── Cancel outgoing request ────────────────────────────────────────────────
-
     /// <summary>
     /// Cancels a pending outgoing friend request to <paramref name="toUid"/>.
     /// </summary>
@@ -389,8 +349,6 @@ public class FriendRequestManager : PersistentSingleton<FriendRequestManager>
             return false;
         }
     }
-
-    // ── Remove friend ──────────────────────────────────────────────────────────
 
     /// <summary>
     /// Removes a friend from both sides' friend lists.

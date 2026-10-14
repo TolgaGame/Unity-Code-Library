@@ -1,15 +1,10 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// AddFriendView.cs
-// Attach to the AddFriendPopup GameObject.
-// Handles the username input and send button logic.
-// ─────────────────────────────────────────────────────────────────────────────
-
 using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using WolfTeen.Friends;
 
+/// <summary>Popup that takes a username and sends a friend request.</summary>
 public class AddFriendView : MonoBehaviour
 {
     [Header("References")]
@@ -23,8 +18,6 @@ public class AddFriendView : MonoBehaviour
 
     private Coroutine _clearCoroutine;
 
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
-
     private void OnEnable()
     {
         inputUsername.text = string.Empty;
@@ -33,21 +26,20 @@ public class AddFriendView : MonoBehaviour
         inputUsername.ActivateInputField();
     }
 
-    // ── Button handler — bağla: btnSend.onClick ────────────────────────────
-
+    /// <summary>Hook up to btnSend.onClick.</summary>
     public async void OnPressedSend()
     {
         string username = inputUsername.text.Trim();
 
         if (string.IsNullOrEmpty(username))
         {
-            ShowResult("Kullanıcı adı boş olamaz.", colorError);
+            ShowResult("Username cannot be empty.", colorError);
             return;
         }
 
         btnSend.interactable    = false;
         inputUsername.interactable = false;
-        txtResult.text          = "Aranıyor...";
+        txtResult.text          = "Searching...";
         txtResult.color         = Color.white;
 
         FriendRequestResult result = await FriendRequestManager.Instance
@@ -59,31 +51,29 @@ public class AddFriendView : MonoBehaviour
         switch (result)
         {
             case FriendRequestResult.Success:
-                ShowResult($"'{username}' adlı oyuncuya istek gönderildi!", colorSuccess);
+                ShowResult($"Friend request sent to '{username}'!", colorSuccess);
                 inputUsername.text = string.Empty;
                 break;
             case FriendRequestResult.UserNotFound:
-                ShowResult("Kullanıcı bulunamadı.", colorError);
+                ShowResult("User not found.", colorError);
                 break;
             case FriendRequestResult.AlreadyFriends:
-                ShowResult("Bu kişi zaten arkadaşınız.", colorError);
+                ShowResult("You are already friends with this player.", colorError);
                 break;
             case FriendRequestResult.RequestAlreadySent:
-                ShowResult("Bu kişiye zaten istek gönderildi.", colorError);
+                ShowResult("You already sent a request to this player.", colorError);
                 break;
             case FriendRequestResult.IncomingRequestExists:
-                ShowResult("Bu kişiden gelen bir isteğin var. Arkadaş isteklerini kontrol et.", colorError);
+                ShowResult("This player already sent you a request. Check your friend requests.", colorError);
                 break;
             case FriendRequestResult.CannotAddSelf:
-                ShowResult("Kendinizi ekleyemezsiniz.", colorError);
+                ShowResult("You cannot add yourself.", colorError);
                 break;
             default:
-                ShowResult("Bir hata oluştu, tekrar dene.", colorError);
+                ShowResult("Something went wrong, please try again.", colorError);
                 break;
         }
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private void ShowResult(string message, Color color)
     {

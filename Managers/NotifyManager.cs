@@ -33,11 +33,9 @@ public class NotifyManager : MonoBehaviour
     [SerializeField]
     private NotificationItem[] notifications = new NotificationItem[]
     {
-        new NotificationItem { title = "TEST", message = "Test notify", fireTimeInHours =1f, enabled = true },
-        new NotificationItem { title = "Come back!", message = "Come back we miss!", fireTimeInHours = 6f, enabled = false },
+        new NotificationItem { title = "TEST", message = "Test notification", fireTimeInHours = 1f, enabled = true },
+        new NotificationItem { title = "Come back!", message = "We miss you!", fireTimeInHours = 6f, enabled = false },
     };
-
-    /////////////////////////////////////
 
     private void Start()
     {
@@ -55,8 +53,6 @@ public class NotifyManager : MonoBehaviour
             }
         }
     }
-
-    ///////////////////////////////////// REQUEST PERMISSION
 
     public void RequestAuthorization()
     {
@@ -84,8 +80,6 @@ public class NotifyManager : MonoBehaviour
     }
 #endif
 
-    /////////////////////////////////////
-
 #if UNITY_ANDROID
 
     public void RegisterNotificationChannel()
@@ -103,9 +97,7 @@ public class NotifyManager : MonoBehaviour
 
 #endif
 
-    // Notes : parameter fireTimeInHours is in hours. 
-    // You can use decimal values for minutes (e.g., 0.5f = 30 minutes) to schedule notifications.
-
+    /// <summary>Schedules a local notification. Use decimal hours for minutes (e.g., 0.5f = 30 minutes).</summary>
     public void SendNotification(string title, string text, float fireTimeInHours)
     {
 #if UNITY_ANDROID
@@ -142,8 +134,7 @@ public class NotifyManager : MonoBehaviour
 #endif
     }
 
-    // If you want to cancel all notifications, you can call this method.
-
+    /// <summary>Cancels all scheduled notifications.</summary>
     public void CancelAllNotifications()
     {
 #if UNITY_ANDROID

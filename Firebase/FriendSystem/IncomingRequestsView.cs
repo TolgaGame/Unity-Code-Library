@@ -1,14 +1,9 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// IncomingRequestsView.cs
-// Attach to the incoming requests panel (ScrollView root).
-// Also drives the notification badge on the friend button.
-// ─────────────────────────────────────────────────────────────────────────────
-
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using WolfTeen.Friends;
 
+/// <summary>Lists incoming friend requests and drives the notification badge on the friend button.</summary>
 public class IncomingRequestsView : MonoBehaviour
 {
     [Header("List")]
@@ -17,12 +12,10 @@ public class IncomingRequestsView : MonoBehaviour
     [SerializeField] private GameObject             emptyStateLabel;
 
     [Header("Notification Badge")]
-    [SerializeField] private GameObject      badgeObject;   // badge root (aktif/pasif)
-    [SerializeField] private TextMeshProUGUI badgeCount;    // içindeki sayı
+    [SerializeField] private GameObject      badgeObject;   // Badge root, toggled by request count
+    [SerializeField] private TextMeshProUGUI badgeCount;    // Count text inside the badge
 
     private readonly List<IncomingRequestItemUI> _spawnedItems = new List<IncomingRequestItemUI>();
-
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     private void OnEnable()
     {
@@ -36,8 +29,6 @@ public class IncomingRequestsView : MonoBehaviour
     {
         FriendRequestManager.OnIncomingRequestsUpdated -= RefreshList;
     }
-
-    // ── List rebuild ──────────────────────────────────────────────────────────
 
     private void RefreshList(IReadOnlyList<FriendRequestEntry> requests)
     {

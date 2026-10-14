@@ -10,7 +10,7 @@ namespace FPS.Tutorial
         EquipWeapon,
         EnterTrigger,
         KillEnemy,
-        UIElementInteract,   // InputField, Button vs. → TutorialTrigger.Notify() ile tetikle
+        UIElementInteract, // InputField, Button, etc.; trigger via TutorialTrigger.Notify()
         Manual
     }
 
@@ -22,10 +22,10 @@ namespace FPS.Tutorial
         [Header("Content")]
         public string title;
         [TextArea(2, 4)] public string narratorText;
-       
+
         public string speakerName;
         public Sprite speakerImage;
-       
+
         public NarratorPosition narratorPosition = NarratorPosition.Bottom;
         public bool narratorPanelEnabled = true;
 
@@ -37,7 +37,7 @@ namespace FPS.Tutorial
         [Header("Completion")]
         public CompletionType completionType = CompletionType.Manual;
         public float reachDistance;
-       
+
         public bool autoSkip;
         public bool skippable;
 
@@ -46,13 +46,12 @@ namespace FPS.Tutorial
         [Header("Localization Keys")]
         public string titleKey;
         public string narratorTextKey;
-        
-        // Getter methods to fetch localized text based on keys
-        public string GetTitle() => 
+
+        // The inline text is passed as the fallback when no localized value exists
+        public string GetTitle() =>
             bl_Localization.Instance.GetText(titleKey, title);
 
-        public string GetNarratorText() => 
+        public string GetNarratorText() =>
             bl_Localization.Instance.GetText(narratorTextKey, narratorText);
-
     }
 }

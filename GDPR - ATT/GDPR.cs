@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using GoogleMobileAds.Ump;
@@ -9,12 +8,11 @@ public class GDPRS : MonoBehaviour
 {
     ConsentForm _consentForm;
 
-    /////////////
     void Start()
     {
         var debugSettings = new ConsentDebugSettings
         {
-            // Geography appears as in EEA for debug devices.
+            // Simulates a device located in the EEA.
             DebugGeography = DebugGeography.EEA,
             TestDeviceHashedIds = new List<string>
             {
@@ -22,14 +20,13 @@ public class GDPRS : MonoBehaviour
             }
         };
 
-        // Here false means users are not under age.
+        // false: the user is not under the age of consent.
         ConsentRequestParameters request = new ConsentRequestParameters
         {
             TagForUnderAgeOfConsent = false,
             ConsentDebugSettings = debugSettings,
         };
 
-        // Check the current consent information status.
         ConsentInformation.Update(request, OnConsentInfoUpdated);
     }
 
@@ -37,8 +34,7 @@ public class GDPRS : MonoBehaviour
     {
         if (error != null)
         {
-            // Handle the error.
-            UnityEngine.Debug.LogError(error);
+            UnityEngine.Debug.LogError($"[GDPRS] {error}");
             return;
         }
 
@@ -46,14 +42,12 @@ public class GDPRS : MonoBehaviour
         {
             LoadConsentForm();
         }
-        // If the error is null, the consent information state was updated.
-        // You are now ready to check if a form is available.
+
         SceneManager.LoadScene(1);
     }
 
     void LoadConsentForm()
     {
-        // Loads a consent form.
         ConsentForm.Load(OnLoadConsentForm);
     }
 
@@ -61,35 +55,28 @@ public class GDPRS : MonoBehaviour
     {
         if (error != null)
         {
-            // Handle the error.
-            UnityEngine.Debug.LogError(error);
+            UnityEngine.Debug.LogError($"[GDPRS] {error}");
             return;
         }
 
-        // The consent form was loaded.
-        // Save the consent form for future requests.
+        // Keep the form so it can be shown again later.
         _consentForm = consentForm;
 
-        // You are now ready to show the form.
         if (ConsentInformation.ConsentStatus == ConsentStatus.Required)
         {
             _consentForm.Show(OnShowForm);
         }
-        
     }
 
     void OnShowForm(FormError error)
     {
         if (error != null)
         {
-            // Handle the error.
-            UnityEngine.Debug.LogError(error);
+            UnityEngine.Debug.LogError($"[GDPRS] {error}");
             return;
         }
 
-        // Handle dismissal by reloading form.
+        // Reload so the next request has a fresh form after dismissal.
         LoadConsentForm();
     }
-
-
 }

@@ -1,17 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// GameInviteManager.cs
-// Responsibilities:
-//   1. Send a game invite to a friend (inviter must be in a Photon room).
-//   2. Listen to incoming invites via Firestore real-time listener.
-//   3. Accept (delete doc + PhotonNetwork.JoinRoom) or Reject (delete doc).
-//
-// Firestore path: gameInvites/{targetUid}/pending/{inviterUid}
-//   Fields: inviterUsername (string), roomName (string), sentAt (timestamp)
-//
-// Communication channel: Firestore (cross-room — Photon RaiseEvent only works
-// within the same room, so Firestore is required for lobby↔room invites).
-// ─────────────────────────────────────────────────────────────────────────────
-
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -20,23 +6,22 @@ using Photon.Pun;
 using UnityEngine;
 using WolfTeen.Friends;
 
+/// <summary>
+/// Sends, receives, accepts and rejects game invites through Firestore at
+/// gameInvites/{targetUsername}/pending/{inviterUsername} (fields: inviterUsername, roomName, sentAt).
+/// Firestore is used because Photon RaiseEvent only works inside one room, so it cannot reach lobby-to-room invites.
+/// </summary>
 public class GameInviteManager : PersistentSingleton<GameInviteManager>
 {
-    // ── Events ────────────────────────────────────────────────────────────────
-
     /// <summary>Fired on the main thread whenever a new game invite arrives.</summary>
     public static event Action<GameInviteData> OnInviteReceived;
-
-    // ── Internals ─────────────────────────────────────────────────────────────
 
     private UserProfile          _localUser;
     private FirebaseFirestore    _db;
     private ListenerRegistration _listener;
 
-    // Invites older than this are silently ignored (stale from previous sessions).
+    // Older invites are stale leftovers from previous sessions and are ignored
     private static readonly TimeSpan InviteExpiry = TimeSpan.FromMinutes(5);
-
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     private void OnEnable()
     {
@@ -56,8 +41,6 @@ public class GameInviteManager : PersistentSingleton<GameInviteManager>
         _listener = null;
     }
 
-    // ── Auth handlers ─────────────────────────────────────────────────────────
-
     private void HandleSignIn(UserProfile profile)
     {
         _localUser = profile;
@@ -72,8 +55,6 @@ public class GameInviteManager : PersistentSingleton<GameInviteManager>
         _listener  = null;
     }
 
-    // ── Firestore real-time listener ──────────────────────────────────────────
-
     private void AttachListener()
     {
         if (_localUser == null) return;
@@ -86,7 +67,7 @@ public class GameInviteManager : PersistentSingleton<GameInviteManager>
             .Collection("pending")
             .Listen(snap =>
             {
-                // Firebase Unity SDK guarantees main-thread delivery.
+                // The Firebase Unity SDK delivers this callback on the main thread
                 foreach (var change in snap.GetChanges(MetadataChanges.Exclude))
                 {
                     if (change.ChangeType != DocumentChange.Type.Added) continue;
@@ -95,7 +76,7 @@ public class GameInviteManager : PersistentSingleton<GameInviteManager>
                     GameInviteData invite = DocToInvite(change.Document);
                     if (invite == null)
                     {
-                        // Stale or malformed — delete from Firestore so it never reappears.
+                        // Delete stale or malformed invites so they never reappear
                         DeleteInviteDocAsync(change.Document.Id);
                         continue;
                     }
@@ -107,7 +88,6 @@ public class GameInviteManager : PersistentSingleton<GameInviteManager>
 
     private static GameInviteData DocToInvite(DocumentSnapshot doc)
     {
-        // Discard invites older than InviteExpiry to avoid showing stale popups.
         if (doc.ContainsField("sentAt"))
         {
             DateTime sentAt = doc.GetValue<Timestamp>("sentAt").ToDateTime();
@@ -128,8 +108,6 @@ public class GameInviteManager : PersistentSingleton<GameInviteManager>
             RoomName        = roomName
         };
     }
-
-    // ── Send invite ───────────────────────────────────────────────────────────
 
     /// <summary>
     /// Writes an invite document to Firestore for the target friend.
@@ -177,8 +155,6 @@ public class GameInviteManager : PersistentSingleton<GameInviteManager>
         }
     }
 
-    // ── Accept ────────────────────────────────────────────────────────────────
-
     /// <summary>
     /// Deletes the invite document and joins the Photon room.
     /// </summary>
@@ -200,15 +176,13 @@ public class GameInviteManager : PersistentSingleton<GameInviteManager>
             return;
         }
 
-        // Fade screen before joining (mirrors what bl_Lobby does for normal room joins).
+        // Same fade bl_Lobby plays for normal room joins
         if (bl_LobbyUI.Instance != null)
             bl_LobbyUI.Instance.blackScreenFader.FadeIn(0.3f);
 
         PhotonNetwork.JoinRoom(invite.RoomName);
         Debug.Log($"[GameInviteManager] Joining room '{invite.RoomName}' via invite from '{invite.InviterUsername}'.");
     }
-
-    // ── Reject ────────────────────────────────────────────────────────────────
 
     /// <summary>
     /// Deletes the invite document without joining the room.
@@ -220,8 +194,6 @@ public class GameInviteManager : PersistentSingleton<GameInviteManager>
         await DeleteInviteDocAsync(invite.InviterUid);
         Debug.Log($"[GameInviteManager] Rejected invite from '{invite.InviterUsername}'.");
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private async Task DeleteInviteDocAsync(string inviterUid)
     {

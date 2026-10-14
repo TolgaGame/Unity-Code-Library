@@ -10,72 +10,65 @@ public class FirebaseManager : MonoBehaviour
     private FirebaseApp app;
     private bool isInitialized = false;
 
-    // Realtime Database reference
     private DatabaseReference databaseRoot;
 
-    /////////////////////////////////////
-  
     private void Start()
     {
-        // 1. First, check dependencies (critical for Android)
+        // Android requires the Google Play services dependency check before any Firebase call
         FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
             var dependencyStatus = task.Result;
 
             if (dependencyStatus == DependencyStatus.Available)
                 InitializeFirebase();
             else
-                Debug.LogError($"Firebase could not be started: {dependencyStatus}");
+                Debug.LogError($"[FirebaseManager] Firebase could not be started: {dependencyStatus}");
         });
-
     }
 
     private void InitializeFirebase()
     {
         app = FirebaseApp.DefaultInstance;
-        
-        // Enable Analytics
+
         FirebaseAnalytics.SetAnalyticsCollectionEnabled(true);
 
-        // Setup Realtime Database root reference
         databaseRoot = FirebaseDatabase.DefaultInstance.RootReference;
-        
-        isInitialized = true;
-        Debug.Log("Firebase successfully initialized and ready!");
 
-        // Example: Send app open event
+        isInitialized = true;
+        Debug.Log("[FirebaseManager] Firebase successfully initialized and ready.");
+
         LogEvent("app_open_custom");
 
         Locator.Instance.GameManagerInstance.SetProfileData();
     }
 
-    #region ANALYTICS METHODS
-    
-    // Sends only the event name (e.g., "level_start")
+    #region Analytics
+
+    /// <summary>Logs an analytics event that has no parameters.</summary>
     public void LogEvent(string eventName)
     {
-        if (!isInitialized) 
+        if (!isInitialized)
             return;
         FirebaseAnalytics.LogEvent(eventName);
-        Debug.Log($"Analytics Sent: {eventName}");
+        Debug.Log($"[FirebaseManager] Analytics sent: {eventName}");
     }
-    
-    // Sends an event with a string parameter (e.g., "level_end", "level_name", "Forest_1")
+
+    /// <summary>Logs an analytics event with a single string parameter.</summary>
     public void LogEventWithParameter(string eventName, string paramName, string paramValue)
     {
         if (!isInitialized) return;
-        
+
         Parameter[] parameters = {
             new Parameter(paramName, paramValue)
         };
 
         FirebaseAnalytics.LogEvent(eventName, parameters);
-        Debug.Log($"Analytics Sent: {eventName} -> {paramName}:{paramValue}");
+        Debug.Log($"[FirebaseManager] Analytics sent: {eventName} -> {paramName}:{paramValue}");
     }
 
     #endregion
 
-    #region REALTIME DATABASE - LEADERBOARD
-    
+    #region Realtime Database - Leaderboard
+
     [System.Serializable]
     public class LeaderboardEntry
     {
@@ -102,14 +95,12 @@ public class FirebaseManager : MonoBehaviour
     public int CurrentPlayerNeighbourIndex => currentPlayerNeighbourIndex;
     public int CurrentNeighbourStartRank => currentNeighbourStartRank;
 
-    /////////////////////////////////////
-  
     private string SanitizeKey(string key)
     {
         if (string.IsNullOrEmpty(key))
             return "Player";
 
-        // Firebase Realtime DB does not allow . $ # [ ] /
+        // Realtime Database keys cannot contain . $ # [ ] /
         return key
             .Replace(".", "_")
             .Replace("$", "_")
@@ -119,18 +110,17 @@ public class FirebaseManager : MonoBehaviour
             .Replace("/", "_");
     }
 
-    // Save current player to leaderboard
     public void SaveCurrentPlayerToLeaderboard()
     {
         if (!isInitialized || databaseRoot == null)
         {
-            Debug.LogWarning("Firebase not initialized, cannot save leaderboard entry.");
+            Debug.LogWarning("[FirebaseManager] Firebase not initialized, cannot save leaderboard entry.");
             return;
         }
 
         if (Locator.Instance == null || Locator.Instance.GameManagerInstance == null)
         {
-            Debug.LogWarning("GameManager not found via Locator, cannot save current player to leaderboard.");
+            Debug.LogWarning("[FirebaseManager] GameManager not found via Locator, cannot save current player to leaderboard.");
             return;
         }
 
@@ -146,16 +136,16 @@ public class FirebaseManager : MonoBehaviour
         {
             if (task.IsFaulted)
             {
-                Debug.LogError($"Failed to save leaderboard entry for {safeName}: {task.Exception}");
+                Debug.LogError($"[FirebaseManager] Failed to save leaderboard entry for {safeName}: {task.Exception}");
             }
             else
             {
-                Debug.Log($"Leaderboard updated for {safeName} with score {playerScore}");
+                Debug.Log($"[FirebaseManager] Leaderboard updated for {safeName} with score {playerScore}");
             }
         });
     }
 
-    // Get or create player profile
+    /// <summary>Loads the player's leaderboard entry, creating it from the local score if missing.</summary>
     public void GetOrCreatePlayerProfile(string username, int localScore, System.Action<string, int> onResult, System.Action<System.Exception> onError = null)
     {
         if (onResult == null)
@@ -163,7 +153,7 @@ public class FirebaseManager : MonoBehaviour
 
         if (!isInitialized || databaseRoot == null)
         {
-            Debug.LogWarning("Firebase not initialized, using local profile data.");
+            Debug.LogWarning("[FirebaseManager] Firebase not initialized, using local profile data.");
             onResult(username, localScore);
             return;
         }
@@ -175,7 +165,7 @@ public class FirebaseManager : MonoBehaviour
         {
             if (task.IsFaulted)
             {
-                Debug.LogError($"Failed to get player profile for {safeName}: {task.Exception}");
+                Debug.LogError($"[FirebaseManager] Failed to get player profile for {safeName}: {task.Exception}");
                 onError?.Invoke(task.Exception);
                 onResult(username, localScore);
                 return;
@@ -191,7 +181,7 @@ public class FirebaseManager : MonoBehaviour
 
             if (!snapshot.Exists || !snapshot.HasChildren)
             {
-                // Kayıt yoksa, local değeri ile yeni kayıt oluştur.
+                // No remote entry yet: create one from the local score
                 LeaderboardEntry newEntry = new LeaderboardEntry(safeName, localScore);
                 string json = JsonUtility.ToJson(newEntry);
 
@@ -199,20 +189,20 @@ public class FirebaseManager : MonoBehaviour
                 {
                     if (setTask.IsFaulted)
                     {
-                        Debug.LogError($"Failed to create player profile for {safeName}: {setTask.Exception}");
+                        Debug.LogError($"[FirebaseManager] Failed to create player profile for {safeName}: {setTask.Exception}");
                         onError?.Invoke(setTask.Exception);
                         onResult(username, localScore);
                     }
                     else
                     {
-                        Debug.Log($"Player profile created for {safeName} with score {localScore}");
+                        Debug.Log($"[FirebaseManager] Player profile created for {safeName} with score {localScore}");
                         onResult(safeName, localScore);
                     }
                 });
             }
             else
             {
-                // Kayıt varsa, veritabanındaki değerleri kullan.
+                // Remote entry exists: prefer its values over the local ones
                 string remoteUsername = safeName;
                 int remoteScore = localScore;
 
@@ -230,25 +220,25 @@ public class FirebaseManager : MonoBehaviour
                     }
                 }
 
-                Debug.Log($"Player profile loaded from DB for {safeName}: {remoteUsername} - {remoteScore}");
+                Debug.Log($"[FirebaseManager] Player profile loaded from DB for {safeName}: {remoteUsername} - {remoteScore}");
                 onResult(remoteUsername, remoteScore);
             }
         });
     }
 
-    // Change current player's username in the leaderboard (only updates the username field, does not touch the key)
+    /// <summary>Updates only the username field of the current player's entry; the key stays unchanged.</summary>
     public void ChangeCurrentPlayerUsername(string newUsername, System.Action<bool> onSuccess = null, System.Action<System.Exception> onError = null)
     {
         if (!isInitialized || databaseRoot == null)
         {
-            Debug.LogWarning("Firebase not initialized, cannot change username.");
+            Debug.LogWarning("[FirebaseManager] Firebase not initialized, cannot change username.");
             onSuccess?.Invoke(false);
             return;
         }
 
         if (Locator.Instance == null || Locator.Instance.GameManagerInstance == null)
         {
-            Debug.LogWarning("GameManager not found via Locator, cannot change username.");
+            Debug.LogWarning("[FirebaseManager] GameManager not found via Locator, cannot change username.");
             onSuccess?.Invoke(false);
             return;
         }
@@ -261,25 +251,25 @@ public class FirebaseManager : MonoBehaviour
         {
             if (task.IsFaulted)
             {
-                Debug.LogError($"Failed to update username for key '{key}': {task.Exception}");
+                Debug.LogError($"[FirebaseManager] Failed to update username for key '{key}': {task.Exception}");
                 onError?.Invoke(task.Exception);
                 onSuccess?.Invoke(false);
             }
             else
             {
                 Locator.Instance.SaveSystemInstance.SavePlayerName(newUsername);
-                Debug.Log($"Username updated for existing key '{key}': {oldUsername} -> {newUsername}");
+                Debug.Log($"[FirebaseManager] Username updated for existing key '{key}': {oldUsername} -> {newUsername}");
                 onSuccess?.Invoke(true);
             }
         });
     }
 
-    // High score get 
+    /// <summary>Reads the highest <paramref name="limit"/> scores; children arrive in ascending score order.</summary>
     public void GetTopLeaderboard(int limit, System.Action<DataSnapshot> onSuccess, System.Action<System.Exception> onError = null)
     {
         if (!isInitialized || databaseRoot == null)
         {
-            Debug.LogWarning("Firebase not initialized, cannot read leaderboard.");
+            Debug.LogWarning("[FirebaseManager] Firebase not initialized, cannot read leaderboard.");
             return;
         }
 
@@ -292,7 +282,7 @@ public class FirebaseManager : MonoBehaviour
             {
                 if (task.IsFaulted)
                 {
-                    Debug.LogError($"Failed to read leaderboard: {task.Exception}");
+                    Debug.LogError($"[FirebaseManager] Failed to read leaderboard: {task.Exception}");
                     onError?.Invoke(task.Exception);
                 }
                 else if (task.IsCompleted)
@@ -302,19 +292,19 @@ public class FirebaseManager : MonoBehaviour
             });
     }
 
-    /// Calculates the current player's rank and neighbour list over the full leaderboard (no top-N limit)
+    /// <summary>Calculates the current player's rank and neighbours over the full leaderboard.</summary>
     public void RefreshCurrentPlayerRankAndNeighbours(int queryLimit = 3000, System.Action onComplete = null)
     {
         if (!isInitialized || databaseRoot == null)
         {
-            Debug.LogWarning("Firebase not initialized, cannot calculate player rank.");
+            Debug.LogWarning("[FirebaseManager] Firebase not initialized, cannot calculate player rank.");
             onComplete?.Invoke();
             return;
         }
 
         if (Locator.Instance == null || Locator.Instance.GameManagerInstance == null)
         {
-            Debug.LogWarning("GameManager not found via Locator, cannot calculate player rank.");
+            Debug.LogWarning("[FirebaseManager] GameManager not found via Locator, cannot calculate player rank.");
             onComplete?.Invoke();
             return;
         }
@@ -322,8 +312,7 @@ public class FirebaseManager : MonoBehaviour
         string playerName = Locator.Instance.GameManagerInstance.PlayerName;
         string safeName = SanitizeKey(playerName);
 
-        // Read the full leaderboard ordered by score, so the player can
-        // always be ranked even if they are far from the top.
+        // Read the full leaderboard so the player can be ranked even when far from the top
         databaseRoot
             .Child("leaderboard")
             .OrderByChild("score")
@@ -332,7 +321,7 @@ public class FirebaseManager : MonoBehaviour
             {
                 if (task.IsFaulted)
                 {
-                    Debug.LogError($"Error while calculating player rank: {task.Exception}");
+                    Debug.LogError($"[FirebaseManager] Error while calculating player rank: {task.Exception}");
                     onComplete?.Invoke();
                     return;
                 }
@@ -364,19 +353,19 @@ public class FirebaseManager : MonoBehaviour
                     allEntries.Add(new LeaderboardEntry(entryUsername, entryScore));
                 }
 
-                // Order by score descending (highest score = rank 1)
+                // Highest score first (rank 1)
                 allEntries.Sort((a, b) => b.score.CompareTo(a.score));
 
                 int index = allEntries.FindIndex(e => e.username == safeName);
                 if (index < 0)
                 {
-                    // Try with sanitized username just in case
+                    // The stored username may differ from the sanitized key
                     index = allEntries.FindIndex(e => SanitizeKey(e.username) == safeName);
                 }
 
                 if (index < 0)
                 {
-                    Debug.LogWarning($"Current player '{safeName}' not found in full leaderboard ({allEntries.Count} entries).");
+                    Debug.LogWarning($"[FirebaseManager] Current player '{safeName}' not found in full leaderboard ({allEntries.Count} entries).");
                     currentPlayerRankInTopList = -1;
                     currentPlayerAndNeighbours.Clear();
                     currentPlayerNeighbourIndex = -1;
@@ -405,12 +394,9 @@ public class FirebaseManager : MonoBehaviour
 
                 currentNeighbourStartRank = startIndex + 1;
 
-              //  Debug.Log($"Current player '{safeName}' rank: {currentPlayerRankInTopList} / {total}");
-
                 onComplete?.Invoke();
             });
     }
 
     #endregion
-    
 }

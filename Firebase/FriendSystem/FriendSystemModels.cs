@@ -1,23 +1,17 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// FriendSystemModels.cs
-// Shared data models for the Friend System.
-// No Unity or Firebase dependencies — pure C# data containers.
-// ─────────────────────────────────────────────────────────────────────────────
-
 using System;
 
 namespace WolfTeen.Friends
 {
-    // ── Firestore path: users/{uid} ─────────────────────────────────────────
+    /// <summary>Firestore path: users/{uid}</summary>
     [Serializable]
     public class UserProfile
     {
         public string Uid          { get; set; }
         public string Username     { get; set; }
-        public string PhotonUserId { get; set; }  // always == Username
+        public string PhotonUserId { get; set; }  // always equals Username
     }
 
-    // ── Firestore path: friends/{uid}/list/{friendUid} ──────────────────────
+    /// <summary>Firestore path: friends/{uid}/list/{friendUid}</summary>
     [Serializable]
     public class FriendEntry
     {
@@ -26,15 +20,14 @@ namespace WolfTeen.Friends
         public string   PhotonUserId { get; set; }
         public DateTime AddedAt      { get; set; }
 
-        // Populated at runtime by FriendManager via Photon FindFriends.
-        // Not persisted to Firestore.
+        // Filled at runtime from Photon FindFriends by FriendManager; not stored in Firestore
         public bool IsOnline  { get; set; }
         public bool IsInRoom  { get; set; }
     }
 
-    // ── Firestore paths:
-    //    friendRequests/{uid}/incoming/{fromUid}
-    //    friendRequests/{uid}/outgoing/{toUid}   ─────────────────────────────
+    /// <summary>
+    /// Firestore paths: friendRequests/{uid}/incoming/{fromUid} and friendRequests/{uid}/outgoing/{toUid}
+    /// </summary>
     [Serializable]
     public class FriendRequestEntry
     {
@@ -44,19 +37,19 @@ namespace WolfTeen.Friends
         public DateTime SentAt       { get; set; }
     }
 
-    // ── Result codes returned by FriendRequestManager operations ─────────────
+    /// <summary>Result codes returned by FriendRequestManager.SendFriendRequestAsync.</summary>
     public enum FriendRequestResult
     {
         Success,
         UserNotFound,
         AlreadyFriends,
         RequestAlreadySent,
-        IncomingRequestExists,  // they already sent you a request — just accept
+        IncomingRequestExists,  // the target already sent us a request, so accept it instead
         CannotAddSelf,
         FirestoreError
     }
 
-    // ── Firestore path: gameInvites/{targetUsername}/pending/{inviterUsername} ──
+    /// <summary>Firestore path: gameInvites/{targetUsername}/pending/{inviterUsername}</summary>
     [Serializable]
     public class GameInviteData
     {

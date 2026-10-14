@@ -3,87 +3,69 @@ using Firebase;
 using Firebase.Analytics;
 using Firebase.Extensions;
 using Firebase.RemoteConfig;
-using System; 
-using System.Collections.Generic; 
+using System;
+using System.Collections.Generic;
 
 public class FirebaseManagerInit : MonoBehaviour
 {
-
     private FirebaseApp app;
     private bool isInitialized = false;
-
-    // Remote Config Values
 
     [HideInInspector] public long RemoteFailAdCount;
     [HideInInspector] public bool RemoteGameDifficulty;
 
-    /////////////////////////////////////
-  
     private void Start()
     {
-        // 1. First, check dependencies (critical for Android)
+        // Android requires the Google Play services dependency check before any Firebase call
         FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
             var dependencyStatus = task.Result;
 
             if (dependencyStatus == DependencyStatus.Available)
                 InitializeFirebase();
             else
-                Debug.LogError($"Firebase could not be started: {dependencyStatus}");
+                Debug.LogError($"[FirebaseManagerInit] Firebase could not be started: {dependencyStatus}");
         });
-
     }
 
     private void InitializeFirebase()
     {
         app = FirebaseApp.DefaultInstance;
-        
-        // Enable Analytics
+
         FirebaseAnalytics.SetAnalyticsCollectionEnabled(true);
-        
+
         isInitialized = true;
-        Debug.Log("Firebase successfully initialized and ready!");
+        Debug.Log("[FirebaseManagerInit] Firebase successfully initialized and ready.");
 
         InitializeRemoteConfig();
 
-        // Example: Send app open event
         LogEvent("app_open_custom");
     }
 
-    // ---------------------------------------------------------
-    //  ANALYTICS METHODS
-    // ---------------------------------------------------------
-
-    /// Sends only the event name (e.g., "level_start")
+    /// <summary>Logs an analytics event that has no parameters.</summary>
     public void LogEvent(string eventName)
     {
-        if (!isInitialized) 
+        if (!isInitialized)
             return;
         FirebaseAnalytics.LogEvent(eventName);
-        Debug.Log($"Analytics Sent: {eventName}");
+        Debug.Log($"[FirebaseManagerInit] Analytics sent: {eventName}");
     }
-    
-    /// Sends an event with a string parameter (e.g., "level_end", "level_name", "Forest_1")
+
+    /// <summary>Logs an analytics event with a single string parameter.</summary>
     public void LogEventWithParameter(string eventName, string paramName, string paramValue)
     {
         if (!isInitialized) return;
-        
+
         Parameter[] parameters = {
             new Parameter(paramName, paramValue)
         };
 
         FirebaseAnalytics.LogEvent(eventName, parameters);
-        Debug.Log($"Analytics Sent: {eventName} -> {paramName}:{paramValue}");
+        Debug.Log($"[FirebaseManagerInit] Analytics sent: {eventName} -> {paramName}:{paramValue}");
     }
 
-    
-    // ---------------------------------------------------------
-    //  REMOTE CONFIG METHODS
-    // ---------------------------------------------------------
-
-    // Remote Config Initialization
     private void InitializeRemoteConfig()
     {
-        // 1. Set default values (used if there is no internet)
+        // Defaults are used when the device is offline
         Dictionary<string, object> defaults = new Dictionary<string, object>();
         defaults.Add("game_difficulty", "normal");
         defaults.Add("daily_reward_coins", 100);
@@ -92,47 +74,37 @@ public class FirebaseManagerInit : MonoBehaviour
         FirebaseRemoteConfig.DefaultInstance.SetDefaultsAsync(defaults)
             .ContinueWithOnMainThread(task =>
             {
-                // Defaults loaded, now fetch latest data from Cloud
-                Debug.Log("Remote Config: Defaults set.");
+                Debug.Log("[FirebaseManagerInit] Remote Config: defaults set.");
                 FetchRemoteData();
             });
     }
 
-    // Fetch data from Cloud (Fetch & Activate)
     private void FetchRemoteData()
     {
-        // In development, set duration to 0 (for instant updates)
-        // For production, set this to 12 hours (43200 sec)
-        TimeSpan fetchTimeout = TimeSpan.Zero; 
-        
+        // A zero timeout forces an immediate refresh during development.
+        // Use a long interval (e.g. 12 hours = 43200 s) in production.
+        TimeSpan fetchTimeout = TimeSpan.Zero;
+
         FirebaseRemoteConfig.DefaultInstance.FetchAsync(fetchTimeout)
             .ContinueWithOnMainThread(fetchTask =>
             {
                 if (fetchTask.IsCanceled || fetchTask.IsFaulted)
                 {
-                    Debug.LogError("Remote Config: Data could not be fetched/Error.");
+                    Debug.LogError("[FirebaseManagerInit] Remote Config: data could not be fetched.");
                     return;
                 }
 
-                // Çekme başarılı, şimdi veriyi aktifleştir (Activate)
                 FirebaseRemoteConfig.DefaultInstance.ActivateAsync()
                     .ContinueWithOnMainThread(activateTask =>
                     {
-                        Debug.Log($"Remote Config: Latest data fetched and activated. Result: {activateTask.Result}");
-                                // Get the remote value from FirebaseManager (default to 3 if not set)
+                        Debug.Log($"[FirebaseManagerInit] Remote Config: latest data fetched and activated. Result: {activateTask.Result}");
 
                         RemoteFailAdCount = GetRemoteLong("fail_ad_count");
-                      //  Debug.Log("Remote fail_ad_count value: " + RemoteFailAdCount);
 
                         RemoteGameDifficulty = GetRemoteBool("hard_mode");
-                     //   Debug.Log("Remote game_difficulty value: " + RemoteGameDifficulty);
                     });
             });
     }
-
-    // ---------------------------------------------------------
-    // DATA READING METHODS (Call these from your game)
-    // ---------------------------------------------------------
 
     public long GetRemoteLong(string key)
     {

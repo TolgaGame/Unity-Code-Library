@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
-using FPS.Tutorial;
 
 namespace FPS.Tutorial.Editor
 {
@@ -13,13 +12,13 @@ namespace FPS.Tutorial.Editor
         public static void ClearTutorialPrefs()
         {
             bool confirm = EditorUtility.DisplayDialog(
-                "Tutorial PlayerPrefs Temizle",
-                $"Aşağıdaki key'ler silinecek:\n\n" +
+                "Clear Tutorial PlayerPrefs",
+                $"The following keys will be deleted:\n\n" +
                 $"  • {TutorialManager.PREF_DONE}\n" +
                 $"  • {TutorialManager.PREF_STEP}\n\n" +
-                "Devam edilsin mi?",
-                "Evet, Sil",
-                "İptal");
+                "Continue?",
+                "Yes, Delete",
+                "Cancel");
 
             if (!confirm) return;
 
@@ -27,8 +26,8 @@ namespace FPS.Tutorial.Editor
             PlayerPrefs.DeleteKey(TutorialManager.PREF_STEP);
             PlayerPrefs.Save();
 
-            Debug.Log("[TutorialDev] Tutorial PlayerPrefs temizlendi. " +
-                      "Oyunu başlatınca tutorial baştan çalışır.");
+            Debug.Log("[TutorialDevTools] Tutorial PlayerPrefs cleared. " +
+                      "The tutorial will run from the beginning when the game starts.");
         }
 
         [MenuItem(MENU_ROOT + "Force Mark as Completed")]
@@ -36,7 +35,7 @@ namespace FPS.Tutorial.Editor
         {
             PlayerPrefs.SetInt(TutorialManager.PREF_DONE, 1);
             PlayerPrefs.Save();
-            Debug.Log("[TutorialDev] Tutorial tamamlandı olarak işaretlendi.");
+            Debug.Log("[TutorialDevTools] Tutorial marked as completed.");
         }
 
         [MenuItem(MENU_ROOT + "Complete Current Step (Runtime)", false, 1)]
@@ -45,27 +44,26 @@ namespace FPS.Tutorial.Editor
             if (!Application.isPlaying)
             {
                 EditorUtility.DisplayDialog(
-                    "Play Mode Gerekli",
-                    "Bu seçenek yalnızca Play Mode'da çalışır.\n\nÖnce oyunu başlatın.",
-                    "Tamam");
+                    "Play Mode Required",
+                    "This option only works in Play Mode.\n\nStart the game first.",
+                    "OK");
                 return;
             }
 
             if (TutorialManager.Instance == null)
             {
-                Debug.LogWarning("[TutorialDev] TutorialManager.Instance bulunamadı.");
+                Debug.LogWarning("[TutorialDevTools] TutorialManager.Instance not found.");
                 return;
             }
 
             int stepBefore = TutorialManager.Instance.GetCurrentStepIndex();
             TutorialManager.Instance.AdvanceStep();
-            Debug.Log($"[TutorialDev] Adım [{stepBefore}] tamamlandı sayıldı → adım [{TutorialManager.Instance.GetCurrentStepIndex()}]'e geçildi.");
+            Debug.Log($"[TutorialDevTools] Step [{stepBefore}] counted as completed, moved to step [{TutorialManager.Instance.GetCurrentStepIndex()}].");
             if (stepBefore == 2)
             {
                 GameObject.Find("SingUp").SetActive(false);
                 TutorialManager.Instance.step6Object.SetActive(true);
             }
-
         }
     }
 }

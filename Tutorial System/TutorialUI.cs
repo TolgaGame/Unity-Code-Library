@@ -8,7 +8,6 @@ using System.Collections.Generic;
 
 namespace FPS.Tutorial
 {
-
     public class TutorialUI : PersistentSingleton<TutorialUI>
     {
         [Header("Overlay")]
@@ -20,7 +19,7 @@ namespace FPS.Tutorial
         [SerializeField] private TextMeshProUGUI titleText;
         [SerializeField] private TextMeshProUGUI speakerNameText;
         [SerializeField] private TextMeshProUGUI narratorText;
-        
+
         [SerializeField] private Image speakerImage;
         [SerializeField] private GameObject narratorPanel;
         [SerializeField] private Button skipButton;
@@ -31,7 +30,6 @@ namespace FPS.Tutorial
         [SerializeField] private float spotlightPadding;
         private float spotlightOverlayAlpha = 0;
 
-        // Private vars
         private float typewriterSpeed = 40f; // chars per second
         private float speakerSlideDuration = 0.35f;
         private float speakerSlideOffset = 400f;
@@ -39,7 +37,6 @@ namespace FPS.Tutorial
         private Vector2 narratorBottomPos = new Vector2(0f,  0f);
         private Vector2 narratorTopPos    = new Vector2(0f, -75f);
 
-        // ── State
         private Coroutine typewriterCoroutine;
         private TutorialStep currentStep;
         private Vector2 speakerRestPos;
@@ -47,8 +44,6 @@ namespace FPS.Tutorial
         private RectTransform canvasRT;
         private RectTransform narratorRT;
 
-        ///////////////////////////////////////////////
-       
         protected override void Awake()
         {
             base.Awake();
@@ -63,17 +58,13 @@ namespace FPS.Tutorial
             BuildSpotlightPanels();
         }
 
-        private void Start(){
-
-        }
-
         #region Public
 
         public void ShowStep(TutorialStep step, RectTransform targetUI = null)
         {
             StartCoroutine(ShowStepCoroutine(step, targetUI));
         }
-        
+
         private IEnumerator ShowStepCoroutine(TutorialStep step, RectTransform targetUI = null)
         {
             currentStep = step;
@@ -85,41 +76,39 @@ namespace FPS.Tutorial
             TutorialManager.Instance.mainCanvas.enabled = true;
             TutorialManager.Instance.mainRaycaster.enabled = true;
 
-            // Overlay veya spotlight
+            // Full overlay, or spotlight when a target UI is given
             if (targetUI != null)
                 ShowSpotlight(targetUI);
-            else {
+            else
+            {
                 HideSpotlight();
                 SetFade(1f);
 
-                if (overlayGroup) 
+                if (overlayGroup)
                     overlayGroup.blocksRaycasts = true;
             }
 
-            // Info texts
-            if (titleText) 
+            if (titleText)
                 titleText.text = step.GetTitle();
 
-            // Skip button
-            if (skipButton) 
+            if (skipButton)
                 skipButton.gameObject.SetActive(step.skippable);
 
-            // Narrator
             if (step.narratorPanelEnabled && !string.IsNullOrEmpty(step.narratorText))
             {
-                if (narratorPanel) 
+                if (narratorPanel)
                     narratorPanel.SetActive(true);
 
                 SetNarratorPosition(step.narratorPosition);
 
-                if (speakerNameText) 
+                if (speakerNameText)
                     speakerNameText.text = step.speakerName;
 
-                // Speaker image
                 if (speakerImage != null)
                 {
                     speakerImage.gameObject.SetActive(step.speakerImage != null);
-                    if (step.speakerImage != null) {
+                    if (step.speakerImage != null)
+                    {
                         speakerImage.sprite = step.speakerImage;
                         SlideInSpeaker();
                     }
@@ -127,8 +116,9 @@ namespace FPS.Tutorial
 
                 StartTypewriter(step.GetNarratorText());
             }
-            else {
-                if (narratorPanel) 
+            else
+            {
+                if (narratorPanel)
                     narratorPanel.SetActive(false);
             }
         }
@@ -215,7 +205,7 @@ namespace FPS.Tutorial
                 go.transform.SetAsFirstSibling();
                 var img = go.GetComponent<Image>();
                 img.color = spotlightColor;
-                img.raycastTarget = true;  // dış alanı blokla
+                img.raycastTarget = true; // block input outside the spotlight
                 go.SetActive(false);
                 spotPanels[i] = img;
             }
@@ -223,7 +213,7 @@ namespace FPS.Tutorial
 
         private void ShowSpotlight(RectTransform target)
         {
-            // Hedefin dört köşesini canvas lokal uzayına çevir
+            // Convert the target's corners into canvas-local space
             var corners = new Vector3[4];
             target.GetWorldCorners(corners);
             for (int i = 0; i < 4; i++)
@@ -235,17 +225,17 @@ namespace FPS.Tutorial
             float nxMax = Mathf.InverseLerp(cr.xMin, cr.xMax, corners[2].x + spotlightPadding);
             float nyMax = Mathf.InverseLerp(cr.yMin, cr.yMax, corners[2].y + spotlightPadding);
 
-            ApplyPanel(spotPanels[0], 0,     nyMax, 1,     1);      // üst
-            ApplyPanel(spotPanels[1], 0,     0,     1,     nyMin);   // alt
-            ApplyPanel(spotPanels[2], 0,     nyMin, nxMin, nyMax);   // sol
-            ApplyPanel(spotPanels[3], nxMax, nyMin, 1,     nyMax);   // sağ
+            ApplyPanel(spotPanels[0], 0,     nyMax, 1,     1);      // top
+            ApplyPanel(spotPanels[1], 0,     0,     1,     nyMin);   // bottom
+            ApplyPanel(spotPanels[2], 0,     nyMin, nxMin, nyMax);   // left
+            ApplyPanel(spotPanels[3], nxMax, nyMin, 1,     nyMax);   // right
 
             foreach (var p in spotPanels) p.gameObject.SetActive(true);
 
-            // Ana overlay'i geri çek; 4 panel kararlığı üstleniyor
+            // The four panels now dim the screen, so the main overlay is faded back
             if (overlayGroup)
             {
-                overlayGroup.blocksRaycasts = false; // spotlight deliğindeki eleman tıklanabilsin
+                overlayGroup.blocksRaycasts = false; // keep the element inside the spotlight clickable
                 overlayGroup.DOFade(spotlightOverlayAlpha, fadeDuration);
             }
         }
@@ -270,7 +260,7 @@ namespace FPS.Tutorial
             overlayGroup.DOFade(target, fadeDuration)
                         .OnComplete(() => onComplete?.Invoke());
         }
-        
+
         #endregion
 
         #region Buttons
@@ -298,14 +288,13 @@ namespace FPS.Tutorial
             if (titleText)
                 titleText.text = currentStep.GetTitle();
 
-            // Typewriter hâlâ yazıyorsa yeniden başlat, bitmişse direkt yaz
+            // Restart the typewriter if it is still running; otherwise show the full text at once
             if (typewriterCoroutine != null)
                 StartTypewriter(currentStep.GetNarratorText());
             else if (narratorText)
                 narratorText.text = currentStep.GetNarratorText();
         }
-        
+
         #endregion
     }
-
 }

@@ -1,4 +1,4 @@
-// StoreKit framework ekle XCODE
+// Requires the StoreKit framework to be added in Xcode.
 using UnityEngine;
 
 #if UNITY_IOS
@@ -9,66 +9,56 @@ public class RateUs : MonoBehaviour
 {
     public GameObject rateUsPanel;
 
-	[Header("Store Bilgileri")]  
-	public string androidPackageName = ""; 
+    [Header("Store Info")]
+    public string androidPackageName = "";
 
     bool reviewRequested = false;
-    
-    /////////////////////////////////////
 
-	public void Rate()
-	{
-
-    Debug.Log("Rate Us Çağrıldı");
+    public void Rate()
+    {
+        Debug.Log("[RateUs] Rate called");
 
 #if UNITY_IOS
-		ShowIOSRate();
+        ShowIOSRate();
 #elif UNITY_ANDROID
-        rateUsPanel.SetActive(true);   
+        rateUsPanel.SetActive(true);
 #else
-		Debug.Log("RateUs sadece gerçek iOS / Android cihazlarda çalışır.");
+        Debug.Log("[RateUs] Rating only works on real iOS / Android devices.");
 #endif
-
-	}
+    }
 
 #if UNITY_IOS
-
-	private void ShowIOSRate()
-	{
+    private void ShowIOSRate()
+    {
         Locator.Instance.SaveSystemInstance.SetRateUsPanelShown(true);
         if (reviewRequested == false)
         {
             bool popupShown = Device.RequestStoreReview();
             if (popupShown)
             {
-                // The review popup was presented to the user, set "reviewRequested" to "true" to reflect that
-                // Note: there's no way to check if the user actually gave a review for the app or cancelled the popup.
+                // iOS gives no way to know whether the user actually left a review or dismissed the popup.
                 reviewRequested = true;
             }
             else
             {
-                // The review popup wasn't presented. Log a message and reset "reviewRequested" so you can revisit this in the future.
-                Debug.Log("iOS version is too low or StoreKit framework was not linked.");
+                // Reset so the request can be retried later.
+                Debug.Log("[RateUs] iOS version is too low or StoreKit framework was not linked.");
                 reviewRequested = false;
             }
         }
-
-	}
-
+    }
 #endif
 
     public void ShowAndroidRate()
     {
         Locator.Instance.SaveSystemInstance.SetRateUsPanelShown(true);
 
-        // Paket adını al
         string packageName = string.IsNullOrEmpty(androidPackageName)
             ? Application.identifier
             : androidPackageName;
 
-        // Play Store URL (http kullanmak her cihazda daha uyumlu)
+        // https is accepted on every device, unlike the market:// scheme.
         string url = "https://play.google.com/store/apps/details?id=" + packageName;
         Application.OpenURL(url);
     }
-
 }

@@ -1,7 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-// if Editor namespace is available, include it for custom inspector functionality
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -24,24 +23,23 @@ public class PanelShower : MonoBehaviour
     }
 }
 
-// Only compile this part if we're in the Unity Editor
+// The custom inspector must not be compiled into player builds.
 #if UNITY_EDITOR
 [CustomEditor(typeof(PanelShower))]
 public class PanelShowerEditor : Editor
 {
     public override void OnInspectorGUI()
     {
-        // Standart Inspector alanlarını (Canvas ve Raycaster slotlarını) çiz
         DrawDefaultInspector();
 
         PanelShower panelScript = (PanelShower)target;
 
         GUILayout.Space(15);
-        EditorGUILayout.LabelField("Panels Comp.", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("Panel Controls", EditorStyles.boldLabel);
 
         GUILayout.BeginHorizontal();
 
-        // Show Butonu (Yeşil)
+        // Green show button
         GUI.backgroundColor = new Color(0.2f, 0.8f, 0.2f);
         if (GUILayout.Button("Show Panel", GUILayout.Height(30)))
         {
@@ -50,7 +48,7 @@ public class PanelShowerEditor : Editor
             EditorUtility.SetDirty(panelScript);
         }
 
-        // Hide Butonu (Kırmızı)
+        // Red hide button
         GUI.backgroundColor = new Color(0.8f, 0.2f, 0.2f);
         if (GUILayout.Button("Hide Panel", GUILayout.Height(30)))
         {
@@ -59,7 +57,7 @@ public class PanelShowerEditor : Editor
             EditorUtility.SetDirty(panelScript);
         }
 
-        // Rengi sıfırla
+        // Restore the default color so other GUI is not tinted
         GUI.backgroundColor = Color.white;
         GUILayout.EndHorizontal();
     }

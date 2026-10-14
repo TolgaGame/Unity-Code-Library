@@ -5,12 +5,10 @@ using UnityEngine.UI;
 
 namespace FPS.Tutorial
 {
-    
     public class TutorialManager : PersistentSingleton<TutorialManager>
     {
-        public GameObject step6Object; 
+        public GameObject step6Object;
 
-        // ── PlayerPrefs Keys
         public const string PREF_DONE = "FPS_TutorialDone";
         public const string PREF_STEP = "FPS_TutorialStep";
 
@@ -25,7 +23,6 @@ namespace FPS.Tutorial
         public  Canvas mainCanvas;
         public  GraphicRaycaster mainRaycaster;
 
-        // ── State 
         private const int InactiveStepIndex = -1;
         private int currentIndex = 0;
         private TutorialStep Current => currentIndex >= 0 && currentIndex < steps.Length ? steps[currentIndex] : null;
@@ -34,31 +31,29 @@ namespace FPS.Tutorial
         private RectTransform activeMarker;
         private Coroutine autoSkipCoroutine;
 
-        // External hooks — wire these up from your gameplay systems
         public static event Action OnTutorialComplete;
 
         /// <summary>Returns true if the tutorial was previously completed (PlayerPrefs).</summary>
         public static bool IsTutorialCompleted() => PlayerPrefs.GetInt(PREF_DONE, 0) == 1;
 
-        //////////////////////////////////////////////////
-    
-        protected override void Awake() {
+        protected override void Awake()
+        {
             base.Awake();
             if (IsTutorialCompleted())
             {
                 currentIndex = InactiveStepIndex;
                 DestroyTutorialCanvas();
-                Debug.Log("[Tutorial] Tutorial daha once tamamlandigi icin tum tutorial sistemleri deaktif edildi.");
+                Debug.Log("[TutorialManager] Tutorial was already completed, so all tutorial systems were deactivated.");
             }
             SetMainCanvas(false); // Force disable tutorial UI on start
-        } 
- 
+        }
+
         private void Update()
         {
-            if (!tutorialActive || !isWaitingForCompletion || Current == null) 
+            if (!tutorialActive || !isWaitingForCompletion || Current == null)
                 return;
 
-            if (CheckCompletion(Current)) 
+            if (CheckCompletion(Current))
                 CompleteCurrentStep();
         }
 
@@ -67,17 +62,17 @@ namespace FPS.Tutorial
             if (IsTutorialCompleted())
             {
                 currentIndex = InactiveStepIndex;
-                Debug.Log("[Tutorial] Tutorial zaten tamamlanmış, atlanıyor (PREF_DONE=1).");
+                Debug.Log("[TutorialManager] Tutorial already completed, skipping (PREF_DONE=1).");
                 return;
             }
 
             if (mainCanvas == null || ui == null)
             {
-                Debug.LogWarning("[Tutorial] StartTutorial iptal edildi: tutorial UI referanslari yok. Sistem daha once destroy edilmis olabilir.");
+                Debug.LogWarning("[TutorialManager] StartTutorial aborted: tutorial UI references are missing. The system may have been destroyed earlier.");
                 return;
             }
 
-            Debug.Log($"[Tutorial] ▶ StartTutorial — toplam adım sayısı: {(steps != null ? steps.Length : 0)}, adım [0] başlatılıyor");
+            Debug.Log($"[TutorialManager] StartTutorial: total steps: {(steps != null ? steps.Length : 0)}, starting step [0]");
             tutorialActive = true;
             currentIndex = 0;
             SetMainCanvas(true);
@@ -90,34 +85,35 @@ namespace FPS.Tutorial
 
         public void AdvanceStep()
         {
-            Debug.Log($"[Tutorial] AdvanceStep çağrıldı → adım [{currentIndex}] tamamlandı");
+            Debug.Log($"[TutorialManager] AdvanceStep called: step [{currentIndex}] completed");
             currentIndex++;
 
-            if (currentIndex >= steps.Length) {
-                Debug.Log("[Tutorial] ✔ Tüm adımlar tamamlandı → EndTutorial çağrılıyor");
+            if (currentIndex >= steps.Length)
+            {
+                Debug.Log("[TutorialManager] All steps completed, calling EndTutorial");
                 EndTutorial();
                 return;
             }
 
-            Debug.Log($"[Tutorial] → adım [{currentIndex}] \"{Current?.title}\" başlatılıyor (completionType: {Current?.completionType})");
+            Debug.Log($"[TutorialManager] Starting step [{currentIndex}] \"{Current?.title}\" (completionType: {Current?.completionType})");
             PlayerPrefs.SetInt(PREF_STEP, currentIndex);
             PlayerPrefs.Save();
-        
+
             ShowStep(Current);
         }
 
         public void SkipCurrentStep()
         {
-            if (Current != null && Current.skippable) {
-                Debug.Log($"[Tutorial] ⏭ Adım [{currentIndex}] atlandı");
+            if (Current != null && Current.skippable)
+            {
+                Debug.Log($"[TutorialManager] Step [{currentIndex}] skipped");
                 AdvanceStep();
             }
             else
-                Debug.LogWarning($"[Tutorial] Adım [{currentIndex}] atlanamaz.");
-
+                Debug.LogWarning($"[TutorialManager] Step [{currentIndex}] cannot be skipped.");
         }
 
-        ///Call from gameplay code to notify the tutorial of an event
+        /// <summary>Call from gameplay code to notify the tutorial of an event.</summary>
         public void NotifyEvent(CompletionType eventType)
         {
             if (!isWaitingForCompletion || Current == null) return;
@@ -127,7 +123,6 @@ namespace FPS.Tutorial
             }
         }
 
-        // UI methods
         private void ShowStep(TutorialStep step)
         {
             isWaitingForCompletion = false;
@@ -167,7 +162,7 @@ namespace FPS.Tutorial
             isWaitingForCompletion = false;
             StopAutoSkip();
 
-            Debug.Log($"[Tutorial] ✔ Adım [{currentIndex}] \"{Current?.title}\" tamamlandı");
+            Debug.Log($"[TutorialManager] Step [{currentIndex}] \"{Current?.title}\" completed");
             AdvanceStep();
         }
 
@@ -181,7 +176,7 @@ namespace FPS.Tutorial
             ui.Hide();
             PlayerPrefs.SetInt(PREF_DONE, 1);
             PlayerPrefs.Save();
-            Debug.Log("[Tutorial] 🏁 EndTutorial — tutorial tamamlandı, OnTutorialComplete event'i tetikleniyor");
+            Debug.Log("[TutorialManager] EndTutorial: tutorial completed, invoking OnTutorialComplete");
             OnTutorialComplete?.Invoke();
         }
 
@@ -212,8 +207,6 @@ namespace FPS.Tutorial
         {
             switch (step.completionType)
             {
-                // CompletionType.PressKey — mobilde klavye yok, devre dışı
-
                 case CompletionType.ReachLocation:
                     if (step.targetObject == null || playerTransform == null) return false;
                     return Vector3.Distance(playerTransform.position, step.targetObject.transform.position) <= step.reachDistance;
@@ -240,15 +233,12 @@ namespace FPS.Tutorial
         #endregion
 
         /// <summary>
-        /// steps[] dizisiyle birebir eşleşen adım indeksini döndürür (0, 1, 2, …).
+        /// Returns the index into the steps array (0, 1, 2, ...), or -1 when the tutorial is inactive.
         /// </summary>
-        /// <returns></returns>
         public int GetCurrentStepIndex()
         {
-            Debug.Log($"[Tutorial] GetCurrentStepIndex çağrıldı → currentIndex: {currentIndex}"); 
+            Debug.Log($"[TutorialManager] GetCurrentStepIndex called: currentIndex: {currentIndex}");
             return currentIndex;
         }
-
     }
-
 }

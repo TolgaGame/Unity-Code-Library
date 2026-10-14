@@ -5,10 +5,9 @@ using UnityEngine.Purchasing;
 
 public class IAPManager : MonoBehaviour
 {
+    StoreController m_StoreController;
 
-    StoreController m_StoreController; // The Unity Purchasing system.
-
-    //Your products IDs. They should match the ids of your products in your store.
+    // Must match the product IDs configured in the store
     public string goldProductId_1;
     public string goldProductId_2;
 
@@ -17,15 +16,16 @@ public class IAPManager : MonoBehaviour
     public string removeAdsProductId;
     public GameObject removeAdsButton;
     private const string removeAdsKey = "RemoveAdsPurchased";
-    /////////////////////////////
 
-    private void Awake() {
+    private void Awake()
+    {
         InitializeIAP();
     }
 
-    private void Start() { 
+    private void Start()
+    {
         if (PlayerPrefs.HasKey(removeAdsKey))
-       {
+        {
             AdManager.Instance.ADSEnabled = false;
             removeAdsButton.SetActive(false);
         }
@@ -40,7 +40,7 @@ public class IAPManager : MonoBehaviour
         m_StoreController.OnPurchaseFailed += OnPurchaseFailed;
 
         m_StoreController.OnStoreDisconnected += OnStoreDisconnected;
-        Debug.Log("Connecting to store.");
+        Debug.Log("[IAPManager] Connecting to store.");
         await m_StoreController.Connect();
 
         m_StoreController.OnProductsFetchFailed += OnProductsFetchedFailed;
@@ -87,22 +87,21 @@ public class IAPManager : MonoBehaviour
 
     private void AddGold(int value)
     {
-       // GameManager.Instance.AddCoin(value);
     }
 
     #endregion
 
-    #region IAP CALLBACKS
+    #region IAP Callbacks
 
     private void OnPurchaseFailed(FailedOrder order)
     {
         var product = GetFirstProductInOrder(order);
         if (product == null)
         {
-            Debug.Log("Could not find product in failed order.");
+            Debug.Log("[IAPManager] Could not find product in failed order.");
         }
 
-        Debug.Log($"Purchase failed - Product: '{product?.definition.id}'," +
+        Debug.Log($"[IAPManager] Purchase failed - Product: '{product?.definition.id}'," +
                     $"PurchaseFailureReason: {order.FailureReason.ToString()},"
                     + $"Purchase Failure Details: {order.Details}");
     }
@@ -112,10 +111,10 @@ public class IAPManager : MonoBehaviour
         var product = GetFirstProductInOrder(order);
         if (product is null)
         {
-            Debug.Log("Could not find product in order.");
+            Debug.Log("[IAPManager] Could not find product in order.");
             return;
         }
-        Debug.Log($"Purchase complete - Product: {product.definition.id}");
+        Debug.Log($"[IAPManager] Purchase complete - Product: {product.definition.id}");
         m_StoreController.ConfirmPurchase(order);
     }
 
@@ -130,7 +129,7 @@ public class IAPManager : MonoBehaviour
                 OnPurchaseConfirmationFailed(failedOrder);
                 break;
             default:
-                Debug.Log("Unknown OnPurchaseConfirmed result.");
+                Debug.Log("[IAPManager] Unknown OnPurchaseConfirmed result.");
                 break;
         }
     }
@@ -140,27 +139,25 @@ public class IAPManager : MonoBehaviour
         var product = GetFirstProductInOrder(order);
         if (product == null)
         {
-            Debug.Log("Could not find product in purchase confirmation.");
+            Debug.Log("[IAPManager] Could not find product in purchase confirmation.");
         }
         else if (product.definition.id == goldProductId_1)
         {
-           // AddGold(500);
-            Debug.Log("Player has purchased the 500 gold pack.");
+            Debug.Log("[IAPManager] Player has purchased the 500 gold pack.");
         }
         else if (product.definition.id == goldProductId_2)
         {
-           // AddGold(1500);
-            Debug.Log("Player has purchased the 1500 gold pack.");
+            Debug.Log("[IAPManager] Player has purchased the 1500 gold pack.");
         }
         else if (product.definition.id == removeAdsProductId)
         {
-            Debug.Log("Player has purchased the Remove Ads product.");
+            Debug.Log("[IAPManager] Player has purchased the Remove Ads product.");
             PlayerPrefs.SetInt(removeAdsKey, 1);
             AdManager.Instance.ADSEnabled = false;
             removeAdsButton.SetActive(false);
         }
 
-        Debug.Log($"Purchase confirmed- Product: {product?.definition.id}");
+        Debug.Log($"[IAPManager] Purchase confirmed - Product: {product?.definition.id}");
     }
 
     private void OnPurchaseConfirmationFailed(FailedOrder order)
@@ -168,29 +165,29 @@ public class IAPManager : MonoBehaviour
         var product = GetFirstProductInOrder(order);
         if (product == null)
         {
-            Debug.Log("Could not find product in failed confirmation.");
+            Debug.Log("[IAPManager] Could not find product in failed confirmation.");
         }
 
-        Debug.Log($"Confirmation failed - Product: '{product?.definition.id}'," +
+        Debug.Log($"[IAPManager] Confirmation failed - Product: '{product?.definition.id}'," +
                     $"PurchaseFailureReason: {order.FailureReason.ToString()},"
                     + $"Confirmation Failure Details: {order.Details}");
     }
 
-    // Calling StoreController.Connect without listeners on StoreController.OnProductsFetched and StoreController.OnProductsFetchedFailed will result in warnings.
+    // Connect warns if OnProductsFetched and OnProductsFetchFailed have no listeners
     private void OnProductsFetched(List<Product> products)
     {
-        Debug.Log($"Products fetched successfully for {products.Count} products.");
+        Debug.Log($"[IAPManager] Products fetched successfully for {products.Count} products.");
     }
 
     private void OnProductsFetchedFailed(ProductFetchFailed failure)
     {
-        Debug.Log($"Products fetch failed for {failure.FailedFetchProducts.Count} products: {failure.FailureReason}");
+        Debug.Log($"[IAPManager] Products fetch failed for {failure.FailedFetchProducts.Count} products: {failure.FailureReason}");
     }
 
-    // Calling StoreController.Connect without a listener on the StoreController.OnStoreDisconnected event will result in warnings.
+    // Connect warns if OnStoreDisconnected has no listener
     private void OnStoreDisconnected(StoreConnectionFailureDescription description)
     {
-        Debug.Log($"Store disconnected details: {description.message}");
+        Debug.Log($"[IAPManager] Store disconnected details: {description.message}");
     }
 
     #endregion
@@ -204,13 +201,14 @@ public class IAPManager : MonoBehaviour
     {
         UnityIAPServices.StoreController().RestoreTransactions((success, error) =>
         {
-            if (success) {
-                // This does not mean anything was restored,
-                // merely that the restoration process succeeded.
-                Debug.Log("Restoration process succeeded.");
-            } else {
-                // Restoration failed. `error` contains the failure reason.
-                Debug.LogError($"Restoration process failed: {error}");
+            if (success)
+            {
+                // Only means the restore process succeeded, not that anything was restored
+                Debug.Log("[IAPManager] Restoration process succeeded.");
+            }
+            else
+            {
+                Debug.LogError($"[IAPManager] Restoration process failed: {error}");
             }
         });
     }
