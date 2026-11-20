@@ -1,9 +1,13 @@
+using System;
 using UnityEngine;
 using UnityEngine.Advertisements;
 using UnityEngine.Serialization;
 
 public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, IUnityAdsLoadListener, IUnityAdsShowListener
 {
+    /// <summary>Raised when an interstitial was closed or failed to show. Use it to continue your game flow.</summary>
+    public event Action OnInterstitialFinished;
+
     [Header("Unity Ads Settings")]
     [SerializeField] string _androidGameId;
     [SerializeField] string _iOSGameId;
@@ -37,9 +41,9 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
     private void Start()
     {
         #if UNITY_IOS
-            _bannerAdUnitId = _iOSAdUnitId;
+            _bannerAdUnitId = _iOSBannerAdUnitId;
         #elif UNITY_ANDROID
-            _bannerAdUnitId = _androidAdUnitId;
+            _bannerAdUnitId = _androidBannerAdUnitId;
         #endif
 
         Advertisement.Banner.SetPosition(_bannerPosition);
@@ -92,21 +96,25 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
         Debug.Log($"[UnityAdsManager] Ad unit loaded: {adUnitId}");
     }
 
-    public void OnUnityAdsFailedToLoad(string _adUnitId, UnityAdsLoadError error, string message)
+    public void OnUnityAdsFailedToLoad(string adUnitId, UnityAdsLoadError error, string message)
     {
-        Debug.Log($"[UnityAdsManager] Error loading ad unit: {_adUnitId} - {error.ToString()} - {message}");
+        Debug.Log($"[UnityAdsManager] Error loading ad unit: {adUnitId} - {error.ToString()} - {message}");
     }
 
-    public void OnUnityAdsShowFailure(string _adUnitId, UnityAdsShowError error, string message)
+    public void OnUnityAdsShowFailure(string adUnitId, UnityAdsShowError error, string message)
     {
-        Debug.Log($"[UnityAdsManager] Error showing ad unit {_adUnitId}: {error.ToString()} - {message}");
+        Debug.Log($"[UnityAdsManager] Error showing ad unit {adUnitId}: {error.ToString()} - {message}");
+        LoadAd();
+        OnInterstitialFinished?.Invoke();
     }
 
-    public void OnUnityAdsShowStart(string _adUnitId) { }
-    public void OnUnityAdsShowClick(string _adUnitId) { }
-    public void OnUnityAdsShowComplete(string _adUnitId, UnityAdsShowCompletionState showCompletionState)
+    public void OnUnityAdsShowStart(string adUnitId) { }
+    public void OnUnityAdsShowClick(string adUnitId) { }
+    public void OnUnityAdsShowComplete(string adUnitId, UnityAdsShowCompletionState showCompletionState)
     {
-        GameManager.Instance.SceneLoad();
+        // An ad can only be shown once, so load the next one right away.
+        LoadAd();
+        OnInterstitialFinished?.Invoke();
     }
 
     public void LoadBanner()

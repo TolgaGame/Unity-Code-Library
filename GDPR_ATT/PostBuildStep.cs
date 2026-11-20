@@ -1,38 +1,34 @@
-/*
-// Uncomment this whole file to add the ATT usage description to Info.plist automatically after an iOS build.
-
+#if UNITY_EDITOR && UNITY_IOS
+// Adds the ATT usage description to Info.plist automatically after every iOS build.
+// Without NSUserTrackingUsageDescription the ATT prompt never appears and App Store review can reject the build.
+using System.IO;
 using UnityEditor;
 using UnityEditor.Callbacks;
-#if UNITY_IOS
 using UnityEditor.iOS.Xcode;
-#endif
-using System.IO;
 
 public class PostBuildStep
 {
-    const string k_TrackingDescription = "Your data will be used to provide you a better and personalized ad experience.";
+    // Shown to the user in the ATT prompt. Describe honestly why you track.
+    private const string TrackingDescription =
+        "Your data will be used to provide you a better and personalized ad experience.";
 
     [PostProcessBuild(0)]
     public static void OnPostProcessBuild(BuildTarget buildTarget, string pathToXcode)
     {
-        if (buildTarget == BuildTarget.iOS)
+        if (buildTarget != BuildTarget.iOS)
+            return;
+
+        string plistPath = Path.Combine(pathToXcode, "Info.plist");
+        var plist = new PlistDocument();
+        plist.ReadFromString(File.ReadAllText(plistPath));
+
+        // Keep a description the developer already set by hand.
+        if (!plist.root.values.ContainsKey("NSUserTrackingUsageDescription"))
         {
-            AddPListValues(pathToXcode);
+            plist.root.SetString("NSUserTrackingUsageDescription", TrackingDescription);
         }
-    }
 
-    static void AddPListValues(string pathToXcode)
-    {
-        string plistPath = pathToXcode + "/Info.plist";
-        PlistDocument plistObj = new PlistDocument();
-
-        plistObj.ReadFromString(File.ReadAllText(plistPath));
-
-        PlistElementDict plistRoot = plistObj.root;
-
-        plistRoot.SetString("NSUserTrackingUsageDescription", k_TrackingDescription);
-
-        File.WriteAllText(plistPath, plistObj.WriteToString());
+        File.WriteAllText(plistPath, plist.WriteToString());
     }
 }
-*/
+#endif

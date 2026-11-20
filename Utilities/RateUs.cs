@@ -1,4 +1,5 @@
 // Requires the StoreKit framework to be added in Xcode.
+using System;
 using UnityEngine;
 
 #if UNITY_IOS
@@ -12,6 +13,9 @@ public class RateUs : MonoBehaviour
     [Header("Store Info")]
     public string androidPackageName = "";
 
+    /// <summary>Raised when the rating flow starts. Subscribe to save "rate us was shown" in your own save system.</summary>
+    public event Action OnRatePromptShown;
+
     bool reviewRequested = false;
 
     public void Rate()
@@ -21,7 +25,10 @@ public class RateUs : MonoBehaviour
 #if UNITY_IOS
         ShowIOSRate();
 #elif UNITY_ANDROID
-        rateUsPanel.SetActive(true);
+        if (rateUsPanel != null)
+        {
+            rateUsPanel.SetActive(true);
+        }
 #else
         Debug.Log("[RateUs] Rating only works on real iOS / Android devices.");
 #endif
@@ -30,7 +37,7 @@ public class RateUs : MonoBehaviour
 #if UNITY_IOS
     private void ShowIOSRate()
     {
-        Locator.Instance.SaveSystemInstance.SetRateUsPanelShown(true);
+        OnRatePromptShown?.Invoke();
         if (reviewRequested == false)
         {
             bool popupShown = Device.RequestStoreReview();
@@ -51,7 +58,7 @@ public class RateUs : MonoBehaviour
 
     public void ShowAndroidRate()
     {
-        Locator.Instance.SaveSystemInstance.SetRateUsPanelShown(true);
+        OnRatePromptShown?.Invoke();
 
         string packageName = string.IsNullOrEmpty(androidPackageName)
             ? Application.identifier

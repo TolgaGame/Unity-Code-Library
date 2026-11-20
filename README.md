@@ -76,11 +76,32 @@ Useful when working with mobile games and monetization.
 
 Examples include:
 
-* Advertisement managers
-* Ad provider integrations
+* AdMob (with Google UMP consent), AppLovin MAX, Unity Ads and **Meta Audience Network** managers
 * Rewarded ads
 * Interstitial ads
 * Banner systems
+* A shared `OnInterstitialFinished` event, so ad managers don't depend on your game code
+
+---
+
+### 🧩 Design Patterns
+
+Beginner-friendly design pattern examples. Each folder has its own README with a diagram, rules and common mistakes.
+
+* **Observer** - objects react to events without knowing each other
+* **State** - a state machine without giant `if/else` blocks
+* **Command** - actions as objects, with undo / redo
+* **Object Pool** - reuse objects instead of `Instantiate` / `Destroy`
+
+---
+
+### 🕹️ Input
+
+Input examples for mobile and desktop. They work with the old and the new Input System.
+
+* Swipe, tap, double tap and long press detection
+* Virtual joystick
+* Keyboard / gamepad helper (`InputReader`)
 
 ---
 
@@ -141,14 +162,14 @@ Editor tools are especially useful when working on larger projects where repetit
 
 ### 📱 GDPR / ATT
 
-Mobile privacy- and tracking-related utilities.
+Mobile privacy- and tracking-related utilities, updated for the current Google UMP flow (see [GDPR_ATT/README.md](GDPR_ATT/README.md)).
 
 Useful when dealing with:
 
 * App Tracking Transparency
-* Privacy flows
-* Mobile consent requirements
-* Advertising-related permissions
+* Google UMP consent form and privacy options button
+* Correct order: ATT → consent → ad initialization
+* iOS Info.plist text added automatically after build
 
 ---
 
@@ -207,9 +228,21 @@ You can also browse the repository directly on GitHub and take only the componen
 
 ## ⚠️ Important
 
-This repository is intended as a **developer code library**, not a plug-and-play framework.
+This repository is intended as a **developer code library**, not a plug-and-play framework. **Every folder is independent: copy only what you need.**
 
-Some systems may depend on:
+Scripts in this library try not to depend on each other. When a script needs something else, it is written at the top of the file. The ones that do:
+
+| Script | Needs |
+|--------|-------|
+| `ADS/AdManager.cs`, `ApplovinAdsManager.cs`, `MetaAdsManager.cs`, `UnityAdsManager.cs` | Only their own SDK |
+| `GDPR_ATT/*` | Only the Google Mobile Ads plugin (ATT: iOS package). They connect to each other in the Inspector |
+| `Managers/IAPManager.cs` | Unity IAP. Wire `On Ads Removed` to `AdManager.DisableAds` if you want it to turn off ads |
+| `Design_Patterns/Observer` | `Utilities/Singleton.cs` |
+| `Firebase/FriendSystem/*`, `Tutorial_System/*` | `Utilities/PersistentSingleton.cs` (+ Photon / Firebase SDKs) |
+| `Firebase/Leaderboard/FirebaseManager.cs` | A project-specific `Locator` / `GameManager` of the original game. Replace it with your own code |
+| `Input/InputDemoMover.cs` | The other scripts in `Input/` (it is only a demo) |
+
+Some systems may also depend on:
 
 * Specific Unity packages
 * Third-party SDKs
@@ -246,7 +279,10 @@ Think of it as a **personal Unity toolbox that is continuously growing.**
 Unity-Code-Library/
 │
 ├── ADS/
-│   └── Advertisement-related systems
+│   └── AdMob, AppLovin, Unity Ads, Meta Audience Network
+│
+├── Design_Patterns/
+│   └── Observer, State, Command, Object Pool
 │
 ├── Editor/
 │   └── Unity Editor tools
@@ -254,21 +290,37 @@ Unity-Code-Library/
 ├── Firebase/
 │   └── Firebase-related systems
 │
-├── GDPR - ATT/
-│   └── Mobile privacy / ATT utilities
+├── GDPR_ATT/
+│   └── UMP consent and ATT utilities
+│
+├── Input/
+│   └── Swipe, tap, joystick, keyboard / gamepad helpers
 │
 ├── Managers/
 │   └── Reusable game and project managers
 │
-├── Tutorial System/
+├── Tutorial_System/
 │   └── Runtime and Editor tutorial tools
 │
 ├── Utilities/
 │   └── General-purpose Unity utilities
 │
+├── CHANGELOG.md
 ├── LICENSE
 └── README.md
 ```
+
+---
+
+## 📝 Changelog
+
+**Latest: v1.1.0**
+
+* New: Command and Object Pool patterns, Input examples, Meta Audience Network manager
+* Updated: Google UMP consent flow and ATT, AdMob / AppLovin / Unity Ads managers
+* Fixed: several ad manager bugs and small utility issues
+
+See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ---
 

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.Purchasing;
 
 public class IAPManager : MonoBehaviour
@@ -15,6 +16,8 @@ public class IAPManager : MonoBehaviour
     [Header("Remove Ads IAP")]
     public string removeAdsProductId;
     public GameObject removeAdsButton;
+    [Tooltip("Invoked when ads are removed (purchase or saved purchase). Wire it to AdManager.DisableAds in the Inspector.")]
+    public UnityEvent onAdsRemoved;
     private const string removeAdsKey = "RemoveAdsPurchased";
 
     private void Awake()
@@ -26,8 +29,8 @@ public class IAPManager : MonoBehaviour
     {
         if (PlayerPrefs.HasKey(removeAdsKey))
         {
-            AdManager.Instance.ADSEnabled = false;
-            removeAdsButton.SetActive(false);
+            onAdsRemoved?.Invoke();
+            if (removeAdsButton != null) removeAdsButton.SetActive(false);
         }
     }
 
@@ -153,8 +156,8 @@ public class IAPManager : MonoBehaviour
         {
             Debug.Log("[IAPManager] Player has purchased the Remove Ads product.");
             PlayerPrefs.SetInt(removeAdsKey, 1);
-            AdManager.Instance.ADSEnabled = false;
-            removeAdsButton.SetActive(false);
+            onAdsRemoved?.Invoke();
+            if (removeAdsButton != null) removeAdsButton.SetActive(false);
         }
 
         Debug.Log($"[IAPManager] Purchase confirmed - Product: {product?.definition.id}");

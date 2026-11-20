@@ -1,15 +1,24 @@
-using UnityEngine;
+using System;
 using System.Collections;
+using UnityEngine;
 using UnityEngine.Networking;
 
 public class InternetCheck : MonoBehaviour
 {
+    [Tooltip("Shown while there is no internet connection. Optional.")]
     public GameObject CheckPanel;
 
     public string testUrl = "https://www.google.com";
     public float checkInterval = 5f;
 
+    [Tooltip("Seconds to wait for the test request before counting it as offline.")]
+    public int requestTimeout = 5;
+
+    /// <summary>Raised only when the connection state changes (true = online).</summary>
+    public event Action<bool> OnConnectionChanged;
+
     private bool isInternetAvailable;
+    private bool hasResult;
 
     private void Start()
     {
@@ -20,31 +29,47 @@ public class InternetCheck : MonoBehaviour
     {
         while (true)
         {
-            yield return StartCoroutine(CheckInternetConnection());
-            Debug.Log("[InternetCheck] Internet: " + (isInternetAvailable ? "YES" : "NO"));
-            yield return new WaitForSeconds(checkInterval);
+            yield return CheckInternetConnection();
+            // Realtime keeps checking even when the game is paused with Time.timeScale = 0.
+            yield return new WaitForSecondsRealtime(checkInterval);
         }
     }
 
     private IEnumerator CheckInternetConnection()
     {
-        UnityWebRequest request = new UnityWebRequest(testUrl);
-        request.method = UnityWebRequest.kHttpVerbHEAD;
+        bool online;
 
-        yield return request.SendWebRequest();
-
-        if (request.result == UnityWebRequest.Result.Success)
+        if (Application.internetReachability == NetworkReachability.NotReachable)
         {
-            isInternetAvailable = true;
-            CheckPanel.SetActive(false);
+            online = false;
         }
         else
         {
-            isInternetAvailable = false;
-            CheckPanel.SetActive(true);
+            using (UnityWebRequest request = UnityWebRequest.Head(testUrl))
+            {
+                request.timeout = requestTimeout;
+                yield return request.SendWebRequest();
+                online = request.result == UnityWebRequest.Result.Success;
+            }
         }
 
-        request.Dispose();
+        SetState(online);
+    }
+
+    private void SetState(bool online)
+    {
+        if (CheckPanel != null)
+        {
+            CheckPanel.SetActive(!online);
+        }
+
+        if (hasResult && online == isInternetAvailable)
+            return;
+
+        hasResult = true;
+        isInternetAvailable = online;
+        Debug.Log("[InternetCheck] Internet: " + (online ? "YES" : "NO"));
+        OnConnectionChanged?.Invoke(online);
     }
 
     public bool IsInternetAvailable()

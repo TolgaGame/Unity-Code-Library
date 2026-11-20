@@ -8,7 +8,7 @@ public class FakeLeaderboardManager : MonoBehaviour
     [SerializeField] private Transform gridParent;
 
     [Header("Player")]
-    private float playerScore;
+    [SerializeField] private float playerScore;
     private const string playerUsername = "MyPlayer";
 
     [Header("Settings")]
@@ -60,9 +60,9 @@ public class FakeLeaderboardManager : MonoBehaviour
 
     #region Build the leaderboard once
 
+    // Set the score in the Inspector, or call SetPlayerScore(...) from your own save system before/after this runs.
     private void Start()
     {
-        playerScore = Locator.Instance.GameManagerInstance.IQPoints;
         Debug.Log($"[FakeLeaderboardManager] Player IQ: {playerScore}");
         BuildLeaderboard();
     }

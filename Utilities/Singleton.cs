@@ -11,7 +11,11 @@ public abstract class Singleton<T> : MonoBehaviour where T : Component
         {
             if (instance == null)
             {
+#if UNITY_2023_1_OR_NEWER
+                instance = FindFirstObjectByType<T>();
+#else
                 instance = FindObjectOfType<T>();
+#endif
             }
 
             return instance;

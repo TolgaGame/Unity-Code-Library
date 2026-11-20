@@ -1,72 +1,131 @@
 using System;
 using UnityEngine;
 
-public class ApplovinAdsManager : Singleton<AdsManagerAPPLOVIN>
+/// <summary>
+/// AppLovin MAX banner + interstitial manager.
+/// Standalone: needs only the AppLovin MAX Unity plugin and your SDK key set in AppLovin Integration Manager.
+/// </summary>
+public class ApplovinAdsManager : MonoBehaviour
 {
-    public override void Awake()
+    public static ApplovinAdsManager Instance { get; private set; }
+
+    private void Awake()
     {
-        base.Awake();
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
     }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+    }
+
+    [Header("Ad Unit IDs (from the AppLovin dashboard)")]
+    [SerializeField] private string androidBannerAdUnitId = "ANDROID_BANNER_AD_UNIT_ID";
+    [SerializeField] private string iOSBannerAdUnitId = "IOS_BANNER_AD_UNIT_ID";
+    [SerializeField] private string androidInterstitialAdUnitId = "ANDROID_INTERSTITIAL_AD_UNIT_ID";
+    [SerializeField] private string iOSInterstitialAdUnitId = "IOS_INTERSTITIAL_AD_UNIT_ID";
+
+    [Header("Behaviour")]
+    [SerializeField] private bool initializeOnStart = true;
+    [Tooltip("Only used when initializeOnStart is on. Leave false until the user has agreed. " +
+             "Prefer AppLovin's built-in consent flow (Integration Manager > Terms & Privacy Policy flow).")]
+    [SerializeField] private bool hasUserConsent;
+
+    /// <summary>Raised when an interstitial was closed or failed to show. Use it to continue your game flow.</summary>
+    public event Action OnInterstitialFinished;
+
+    private string BannerAdUnitId =>
+#if UNITY_IOS
+        iOSBannerAdUnitId;
+#else
+        androidBannerAdUnitId;
+#endif
+
+    private string InterstitialAdUnitId =>
+#if UNITY_IOS
+        iOSInterstitialAdUnitId;
+#else
+        androidInterstitialAdUnitId;
+#endif
+
+    private int retryAttempt;
+    private bool initialized;
 
     private void Start()
     {
-        MaxSdkCallbacks.OnSdkInitializedEvent += (MaxSdkBase.SdkConfiguration sdkConfiguration) => {
+        if (initializeOnStart)
+        {
+            InitializeAds(hasUserConsent);
+        }
+    }
+
+    /// <summary>Initializes MAX once. Call it after the user's consent choice is known.</summary>
+    public void InitializeAds(bool userConsent)
+    {
+        if (initialized)
+            return;
+
+        initialized = true;
+
+        MaxSdkCallbacks.OnSdkInitializedEvent += (MaxSdkBase.SdkConfiguration sdkConfiguration) =>
+        {
             // Ads can only be loaded once the SDK has finished initializing.
             InitializeBannerAds();
             InitializeInterstitialAds();
         };
+
+        // Consent has to be set before the SDK is initialized, never hard-coded to true.
+        MaxSdk.SetHasUserConsent(userConsent);
         MaxSdk.InitializeSdk();
-        MaxSdk.SetHasUserConsent(true);
     }
 
-#if UNITY_IOS
-    string bannerAdUnitId = "2db5a6c2b7493ff3";
-#else // UNITY_ANDROID
-    string bannerAdUnitId = "«Android-ad-unit-ID»";
-#endif
+    #region Banner
 
     public void InitializeBannerAds()
     {
         // Banners are sized 320x50 on phones and 728x90 on tablets.
-        MaxSdk.CreateBanner(bannerAdUnitId, MaxSdkBase.BannerPosition.BottomCenter);
+        MaxSdk.CreateBanner(BannerAdUnitId, MaxSdkBase.BannerPosition.BottomCenter);
 
         // MAX requires a background color for banners to work properly.
-        MaxSdk.SetBannerBackgroundColor(bannerAdUnitId, Color.white);
+        MaxSdk.SetBannerBackgroundColor(BannerAdUnitId, Color.white);
 
-        MaxSdkCallbacks.Banner.OnAdLoadedEvent      += OnBannerAdLoadedEvent;
-        MaxSdkCallbacks.Banner.OnAdLoadFailedEvent  += OnBannerAdLoadFailedEvent;
-        MaxSdkCallbacks.Banner.OnAdClickedEvent     += OnBannerAdClickedEvent;
-        MaxSdkCallbacks.Banner.OnAdRevenuePaidEvent += OnBannerAdRevenuePaidEvent;
-        MaxSdkCallbacks.Banner.OnAdExpandedEvent    += OnBannerAdExpandedEvent;
-        MaxSdkCallbacks.Banner.OnAdCollapsedEvent   += OnBannerAdCollapsedEvent;
+        MaxSdkCallbacks.Banner.OnAdLoadedEvent += OnBannerAdLoadedEvent;
+        MaxSdkCallbacks.Banner.OnAdLoadFailedEvent += OnBannerAdLoadFailedEvent;
+
+        MaxSdk.ShowBanner(BannerAdUnitId);
     }
 
-    private void OnBannerAdLoadedEvent(string adUnitId, MaxSdkBase.AdInfo adInfo) {}
+    public void ShowBanner() => MaxSdk.ShowBanner(BannerAdUnitId);
 
-    private void OnBannerAdLoadFailedEvent(string adUnitId, MaxSdkBase.ErrorInfo errorInfo) {}
+    public void HideBanner() => MaxSdk.HideBanner(BannerAdUnitId);
 
-    private void OnBannerAdClickedEvent(string adUnitId, MaxSdkBase.AdInfo adInfo) {}
+    private void OnBannerAdLoadedEvent(string adUnitId, MaxSdkBase.AdInfo adInfo)
+    {
+        Debug.Log("[ApplovinAdsManager] Banner loaded.");
+    }
 
-    private void OnBannerAdRevenuePaidEvent(string adUnitId, MaxSdkBase.AdInfo adInfo) {}
+    private void OnBannerAdLoadFailedEvent(string adUnitId, MaxSdkBase.ErrorInfo errorInfo)
+    {
+        Debug.LogWarning($"[ApplovinAdsManager] Banner failed to load: {errorInfo.Message}");
+    }
 
-    private void OnBannerAdExpandedEvent(string adUnitId, MaxSdkBase.AdInfo adInfo) {}
+    #endregion
 
-    private void OnBannerAdCollapsedEvent(string adUnitId, MaxSdkBase.AdInfo adInfo) {}
-
-#if UNITY_IOS
-    string interstitialAdUnitId = "6417e181e9d09e17";
-#else // UNITY_ANDROID
-    string interstitialAdUnitId = "«Android-ad-unit-ID»";
-#endif
-
-    int retryAttempt;
+    #region Interstitial
 
     public void InitializeInterstitialAds()
     {
         MaxSdkCallbacks.Interstitial.OnAdLoadedEvent += OnInterstitialLoadedEvent;
         MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent += OnInterstitialLoadFailedEvent;
-        MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent += OnInterstitialDisplayedEvent;
-        MaxSdkCallbacks.Interstitial.OnAdClickedEvent += OnInterstitialClickedEvent;
         MaxSdkCallbacks.Interstitial.OnAdHiddenEvent += OnInterstitialHiddenEvent;
         MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent += OnInterstitialAdFailedToDisplayEvent;
 
@@ -75,14 +134,19 @@ public class ApplovinAdsManager : Singleton<AdsManagerAPPLOVIN>
 
     private void LoadInterstitial()
     {
-        MaxSdk.LoadInterstitial(interstitialAdUnitId);
+        MaxSdk.LoadInterstitial(InterstitialAdUnitId);
     }
 
     public void ShowInterstitial()
     {
-        if (MaxSdk.IsInterstitialReady(interstitialAdUnitId))
+        if (initialized && MaxSdk.IsInterstitialReady(InterstitialAdUnitId))
         {
-            MaxSdk.ShowInterstitial(interstitialAdUnitId);
+            MaxSdk.ShowInterstitial(InterstitialAdUnitId);
+        }
+        else
+        {
+            // Never block the game flow because an ad is missing.
+            OnInterstitialFinished?.Invoke();
         }
     }
 
@@ -96,24 +160,21 @@ public class ApplovinAdsManager : Singleton<AdsManagerAPPLOVIN>
         // AppLovin recommends retrying with exponentially increasing delays, capped at 64 seconds.
         retryAttempt++;
         double retryDelay = Math.Pow(2, Math.Min(6, retryAttempt));
-        Invoke("LoadInterstitial", (float) retryDelay);
+        Invoke(nameof(LoadInterstitial), (float)retryDelay);
     }
-
-    private void OnInterstitialDisplayedEvent(string adUnitId, MaxSdkBase.AdInfo adInfo) {}
 
     private void OnInterstitialAdFailedToDisplayEvent(string adUnitId, MaxSdkBase.ErrorInfo errorInfo, MaxSdkBase.AdInfo adInfo)
     {
-        GameManager.Instance.SceneLoad();
         // Preload the next ad, as AppLovin recommends after a display failure.
         LoadInterstitial();
+        OnInterstitialFinished?.Invoke();
     }
-
-    private void OnInterstitialClickedEvent(string adUnitId, MaxSdkBase.AdInfo adInfo) {}
 
     private void OnInterstitialHiddenEvent(string adUnitId, MaxSdkBase.AdInfo adInfo)
     {
-        GameManager.Instance.SceneLoad();
-        // Preload the next ad.
         LoadInterstitial();
+        OnInterstitialFinished?.Invoke();
     }
+
+    #endregion
 }
