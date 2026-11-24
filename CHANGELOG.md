@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.2.0
+
+### Added
+- **Managers/SaveSystem** - JSON save / load / delete in `persistentDataPath` with safe (temp file) writing and optional obfuscation. Standalone.
+- **Managers/AudioManager** - music with crossfade, SFX pool with random pitch, saved volume and mute settings. Standalone.
+- **Utilities/ScreenSafeArea** - fits a UI panel into `Screen.safeArea` (notch / cutout support), updates on rotation. Standalone.
+- **Utilities/FPSCounter** - on-screen FPS, frame time and memory overlay. Only active in the Editor and development builds. Standalone.
+
 ## v1.1.0
 
 ### Added

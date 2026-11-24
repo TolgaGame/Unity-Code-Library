@@ -130,6 +130,8 @@ Examples include:
 * Localization
 * Notifications
 * Upgrade systems
+* Save system (JSON, safe writes)
+* Audio manager (music crossfade, SFX pool)
 * Other reusable management systems
 
 ---
@@ -184,6 +186,8 @@ Examples include:
 * Internet connection checking
 * UI helpers
 * Panel management
+* Safe area (notch) UI fitting
+* FPS / memory debug overlay
 * Common Unity utilities
 * Small reusable components
 
@@ -237,6 +241,7 @@ Scripts in this library try not to depend on each other. When a script needs som
 | `ADS/AdManager.cs`, `ApplovinAdsManager.cs`, `MetaAdsManager.cs`, `UnityAdsManager.cs` | Only their own SDK |
 | `GDPR_ATT/*` | Only the Google Mobile Ads plugin (ATT: iOS package). They connect to each other in the Inspector |
 | `Managers/IAPManager.cs` | Unity IAP. Wire `On Ads Removed` to `AdManager.DisableAds` if you want it to turn off ads |
+| `Managers/SaveSystem.cs`, `Managers/AudioManager.cs`, `Utilities/ScreenSafeArea.cs`, `Utilities/FPSCounter.cs` | Nothing (fully standalone) |
 | `Design_Patterns/Observer` | `Utilities/Singleton.cs` |
 | `Firebase/FriendSystem/*`, `Tutorial_System/*` | `Utilities/PersistentSingleton.cs` (+ Photon / Firebase SDKs) |
 | `Firebase/Leaderboard/FirebaseManager.cs` | A project-specific `Locator` / `GameManager` of the original game. Replace it with your own code |
@@ -314,7 +319,11 @@ Unity-Code-Library/
 
 ## 📝 Changelog
 
-**Latest: v1.1.0**
+**Latest: v1.2.0**
+
+* New: `SaveSystem`, `AudioManager`, `ScreenSafeArea`, `FPSCounter` (all standalone)
+
+**v1.1.0**
 
 * New: Command and Object Pool patterns, Input examples, Meta Audience Network manager
 * Updated: Google UMP consent flow and ATT, AdMob / AppLovin / Unity Ads managers
