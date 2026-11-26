@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.3.0
+
+### Added
+- **BlastGameExample/** - a Toon Blast style blast mechanic in 7 scripts. Add `BlastGameController` to an empty GameObject and press Play. Standalone, no art files needed.
+  - Tap groups of 2+ same colored cubes, gravity and refill, score and moves, win / lose, tap to restart.
+  - Groups of 5+ leave a bomb that clears 3x3. Automatic shuffle when no move is left.
+  - `BlastBoard` holds the rules in plain C# (no Unity code), `BlastBoardView` / `BlastTile` only show them.
+  - Works with the old and the new Input System. Has its own `README.md`.
+
 ## v1.2.0
 
 ### Added

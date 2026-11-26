@@ -95,6 +95,18 @@ Beginner-friendly design pattern examples. Each folder has its own README with a
 
 ---
 
+### 💥 Blast Game Example
+
+A complete Toon Blast style mechanic in 7 small scripts. Add one component to an empty scene and press Play (see [BlastGameExample/README.md](BlastGameExample/README.md)).
+
+* Tap groups of same colored cubes, gravity, refill
+* Bombs from big groups, score, moves, win / lose
+* Automatic shuffle when no move is left
+* Game rules in plain C# (`BlastBoard`), separate from the visuals
+* No art files needed, works with the old and the new Input System
+
+---
+
 ### 🕹️ Input
 
 Input examples for mobile and desktop. They work with the old and the new Input System.
@@ -246,6 +258,7 @@ Scripts in this library try not to depend on each other. When a script needs som
 | `Firebase/FriendSystem/*`, `Tutorial_System/*` | `Utilities/PersistentSingleton.cs` (+ Photon / Firebase SDKs) |
 | `Firebase/Leaderboard/FirebaseManager.cs` | A project-specific `Locator` / `GameManager` of the original game. Replace it with your own code |
 | `Input/InputDemoMover.cs` | The other scripts in `Input/` (it is only a demo) |
+| `BlastGameExample/*` | Nothing (copy the whole folder, the 7 scripts belong together) |
 
 Some systems may also depend on:
 
@@ -286,6 +299,9 @@ Unity-Code-Library/
 ├── ADS/
 │   └── AdMob, AppLovin, Unity Ads, Meta Audience Network
 │
+├── BlastGameExample/
+│   └── Toon Blast style match mechanic (7 scripts)
+│
 ├── Design_Patterns/
 │   └── Observer, State, Command, Object Pool
 │
@@ -319,7 +335,11 @@ Unity-Code-Library/
 
 ## 📝 Changelog
 
-**Latest: v1.2.0**
+**Latest: v1.3.0**
+
+* New: `BlastGameExample`, a Toon Blast style blast mechanic in 7 scripts
+
+**v1.2.0**
 
 * New: `SaveSystem`, `AudioManager`, `ScreenSafeArea`, `FPSCounter` (all standalone)
 
